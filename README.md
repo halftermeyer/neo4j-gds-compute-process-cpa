@@ -41,10 +41,9 @@ To perform CPA using Neo4j's Graph Data Science (GDS) library (e.g., `gds.dag.lo
 This refactoring treats time as relationships, allowing GDS to compute longest paths (critical paths) based on cumulative durations. It draws from the approach in the Neo4j blog post ["Unlocking DAGs in Neo4j: From Basics to Critical Path Analysis"](https://neo4j.com/blog/developer/dags-neo4j-critical-path-analysis/), enabling scalable analysis of delays and dependencies in risk computations.
 
 ## Setup Instructions
-1. Start a local Neo4j instance.
+1. Start a Neo4j instance with GDS plugin installed.
 2. Run `cypher_import.cypher` to import data (update file paths as needed).
-3. Install the Graph Data Science (GDS) library if not already present (via Neo4j Desktop or `CALL gds.version()` to check).
-4. Execute the queries in sequence as described below.
+3. Execute the queries in sequence as described below.
 
 ## Modeling Queries
 These queries build and refactor the data model for dependency mapping and real-time monitoring.
