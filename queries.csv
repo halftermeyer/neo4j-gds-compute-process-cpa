@@ -1,0 +1,71 @@
+name,description,query,id,parentId,isFolder
+Customer Data,,,0,1,true
+clean,,"MATCH (ko:KickOff)
+OPTIONAL CALL (ko) { 
+WITH ko LIMIT 1
+DETACH DELETE ko
+};
+MATCH (x:End|Start)
+CALL (x) { DETACH DELETE x} IN TRANSACTIONS OF 1000 ROWS;
+CALL gds.graph.drop('g');",2,0,false
+compute job durations,,"MATCH (j:Job)
+CALL (j) {
+  WITH j.job_id AS job_id, duration.between(time(j.start_date), time(j.end_date)) AS duration
+  WITH job_id, duration, duration.seconds AS sec
+  SET j.duration = sec
+  } IN CONCURRENT TRANSACTIONS OF 1000 ROWS",3,0,false
+create index for merge,,"CREATE INDEX start_job_id IF NOT EXISTS FOR (s:Start) ON (s.job_id);
+CREATE INDEX end_job_id IF NOT EXISTS FOR (e:End) ON (e.job_id);",4,0,false
+time as rels,,"MATCH (j:Job)
+CALL (j) {
+  MERGE (s:Start {job_id: j.job_id})
+  MERGE (e:End {job_id: j.job_id})
+  MERGE (j)-[:STARTS]->(s)
+  MERGE (j)-[:ENDS]->(e)
+  MERGE (s)-[:TIME {duration: j.duration}]->(e)
+} IN CONCURRENT TRANSACTIONS OF 1000 ROWS",5,0,false
+dependency 3sec wait time,,"MATCH (j1)-[:DEPENDS]->(j0)
+CALL (j0, j1) {
+  MERGE (s:Start {job_id: j1.job_id})
+  MERGE (e:End {job_id: j0.job_id})
+  MERGE (e)-[:TIME {duration: 3}]->(s)
+} IN CONCURRENT TRANSACTIONS OF 1000 ROWS",6,0,false
+kickoff node,,MERGE (:KickOff),7,0,false
+kickOff to initial jobs,,"MATCH (j:Job)
+WITH duration.between (time(""00:00:00""), time(j.start_date)).seconds AS duration
+ORDER BY duration ASC LIMIT 1
+MATCH (ko:KickOff)
+WITH ko, duration
+MATCH (j:Job)-[:STARTS]->(s)
+WHERE NOT EXISTS {(j)-[:DEPENDS]->()}
+CALL (ko, s, duration) {
+  MERGE (ko)-[:TIME {duration: duration}]->(s)
+} IN TRANSACTIONS OF 1000 ROWS",8,0,false
+project in-memory graph,,"MATCH (source:Start|KickOff|End)
+OPTIONAL MATCH (source)-[r:TIME]->(target)
+RETURN gds.graph.project(""g"", source, target, {relationshipProperties: r {.duration}})",9,0,false
+stream critical paths,,"CALL gds.dag.longestPath.stream(""g"", {relationshipWeightProperty: ""duration""})
+YIELD targetNode as target, totalCost, path, costs
+WITH target AS last_activity, totalCost, path, costs
+ORDER BY totalCost DESC
+WITH last_activity, collect ({totalCost:totalCost, path:path, costs:costs})[0] AS longest
+RETURN last_activity, longest.totalCost AS critical_time, longest.path AS path, longest.costs AS costs",10,0,false
+stream crtitical times,,"CALL gds.dag.longestPath.stream(""g"", {relationshipWeightProperty: ""duration""})
+YIELD targetNode as target, totalCost, path, costs
+WITH gds.util.asNode(target).job_id AS last_activity, totalCost, path, costs
+ORDER BY totalCost DESC
+WITH last_activity, collect ({totalCost:totalCost, path:path, costs:costs})[0] AS longest
+WHERE last_activity IN [""a"",
+                        ""ab"",
+                        ""aba"",
+                        ""abaa"",
+                        ""abaaa"",
+                        ""abaaaa"",
+                        ""abaaaaa"",
+                        ""abaaaaaa"",
+                        ""abaaaaaae"",
+                        ""abaaaaaaea"",
+                        ""abaaaaaaeab""]
+WITH last_activity, longest.totalCost AS critical_time, longest.path AS path, longest.costs AS costs
+ORDER BY size(last_activity)
+RETURN last_activity, critical_time",11,0,false
