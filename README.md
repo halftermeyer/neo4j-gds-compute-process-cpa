@@ -4,15 +4,24 @@
 
 ## Try It Now
 
+Requires a running Neo4j instance with **GDS** and **APOC** plugins (local, Aura, or remote).
+
 ```bash
 git clone https://github.com/halftermeyer/neo4j-gds-compute-process-cpa.git
 cd neo4j-gds-compute-process-cpa
 docker compose up
 ```
 
-Then open **http://localhost:8000** and connect to your Neo4j instance (needs GDS + APOC plugins).
+Open **http://localhost:8000** and connect to your Neo4j instance. The default URI `bolt://host.docker.internal:7687` points to Neo4j running on your host machine.
 
-The app auto-loads a 60-task risk computation pipeline. Click any node to compute critical paths.
+The app auto-loads a 60-task risk computation pipeline on first connect. Click any node to compute critical paths, right-click to toggle completion.
+
+**Without Docker** (run locally):
+```bash
+cd app
+pip install -r requirements.txt
+uvicorn main:app --port 8000
+```
 
 ## Overview
 
