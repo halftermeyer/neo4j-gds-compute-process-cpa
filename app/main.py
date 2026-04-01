@@ -82,7 +82,7 @@ def get_graph():
     """Return all Task nodes and PRECEDES relationships."""
     driver = get_driver()
     with driver.session() as session:
-        result = session.run("""
+        result = session.run("""CYPHER 25
             MATCH (n:Task)
             OPTIONAL MATCH (n)-[r:PRECEDES]->(m:Task)
             RETURN n.uid AS uid, n.name AS name, n.duration AS duration,
@@ -109,7 +109,7 @@ def complete_task(uid: int):
     """Mark a task and all its ancestors (upstream) as Done."""
     driver = get_driver()
     with driver.session() as session:
-        result = session.run("""
+        result = session.run("""CYPHER 25
             MATCH (target:Task {uid: $uid})
             CALL apoc.path.subgraphNodes(target, {
                 relationshipFilter: "<PRECEDES",
@@ -129,7 +129,7 @@ def uncomplete_task(uid: int):
     """Remove Done label from a task and all its descendants (downstream)."""
     driver = get_driver()
     with driver.session() as session:
-        result = session.run("""
+        result = session.run("""CYPHER 25
             MATCH (target:Task {uid: $uid})
             CALL apoc.path.subgraphNodes(target, {
                 relationshipFilter: "PRECEDES>",
@@ -157,7 +157,7 @@ def compute_cpa(uid: int):
             pass
 
         # Project scoped subgraph with virtual node splitting
-        proj = session.run("""
+        proj = session.run("""CYPHER 25
             MATCH (scopingNode:Task {uid: $uid})
             CALL apoc.path.subgraphNodes(scopingNode, {
                 relationshipFilter: "<PRECEDES",
@@ -192,7 +192,7 @@ def compute_cpa(uid: int):
             raise HTTPException(status_code=400, detail="Node is Done or not found")
 
         # Run longestPath
-        result = session.run("""
+        result = session.run("""CYPHER 25
             CALL gds.dag.longestPath.stream($graph_name, {
                 relationshipWeightProperty: "duration"
             })
@@ -236,7 +236,7 @@ def compute_cpa(uid: int):
         session.run("CALL gds.graph.drop($name, false)", name=graph_name)
 
         # Collect full ancestor subgraph (non-Done) for highlighting
-        ancestor_result = session.run("""
+        ancestor_result = session.run("""CYPHER 25
             MATCH (scopingNode:Task {uid: $uid})
             CALL apoc.path.subgraphNodes(scopingNode, {
                 relationshipFilter: "<PRECEDES",
