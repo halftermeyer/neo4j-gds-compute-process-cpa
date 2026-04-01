@@ -224,7 +224,8 @@
     <p>Click a node to compute critical paths. Right-click to toggle completion.</p>
   </div>
   <div class="toolbar">
-    <button class="btn primary" onclick="resetDataset()">Reset Dataset</button>
+    <button class="btn primary" onclick="resetDataset()">60-Task Dataset</button>
+    <button class="btn danger" onclick="resetLargeDataset()">Huge Dataset</button>
     <button class="btn" onclick="fitGraph()">Fit View</button>
     <button class="btn" onclick="clearSelection()">Clear Selection</button>
   </div>
@@ -569,12 +570,26 @@ async function toggleDone(uid, markDone) {
 }
 
 async function resetDataset() {
-  if (!confirm('This will reset the database to the initial dataset. Continue?')) return;
+  if (!confirm('This will reset the database to the 60-task dataset. Continue?')) return;
   showLoading('Resetting dataset...');
   await fetch('/api/reset', { method: 'POST' });
   await loadGraph();
   hideLoading();
   clearSelection();
+}
+
+async function resetLargeDataset() {
+  const input = prompt('Generate huge dataset.\nFormat: layers,width,seed (default: 20,25,42)', '20,25,42');
+  if (!input) return;
+  const [layers, width, seed] = input.split(',').map(s => parseInt(s.trim()));
+  showLoading(`Generating ${layers} layers x ~${width} width...`);
+  const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&seed=${seed}&done=0.3`, { method: 'POST' });
+  const result = await resp.json();
+  showLoading(`Loading ${result.nodes} nodes, ${result.edges} edges...`);
+  await loadGraph();
+  hideLoading();
+  clearSelection();
+  alert(`Loaded: ${result.nodes} nodes, ${result.edges} edges, ${result.done} done`);
 }
 
 // Events
