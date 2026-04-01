@@ -15,6 +15,21 @@ driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
 
+@app.on_event("startup")
+def startup():
+    """Load the 60-task dataset on startup if the database is empty."""
+    with driver.session() as session:
+        result = session.run("MATCH (n:Task) RETURN count(n) AS c")
+        if result.single()["c"] == 0:
+            cypher_path = os.path.join(os.path.dirname(__file__), "generate_dataset.cypher")
+            with open(cypher_path) as f:
+                cypher = f.read()
+            for statement in cypher.split(";"):
+                statement = statement.strip()
+                if statement:
+                    session.run(statement)
+
+
 @app.get("/")
 def index():
     return FileResponse(os.path.join(os.path.dirname(__file__), "static", "index.html"))
