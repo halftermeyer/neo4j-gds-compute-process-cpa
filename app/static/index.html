@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPA at Scale — Interactive Explorer</title>
+<script src="https://unpkg.com/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<style>
+  :root {
+    --neo-blue: #0A6190;
+    --neo-dark: #014063;
+    --neo-teal: #5DB3BF;
+    --neo-cyan: #8FE3E8;
+    --neo-green: #6FA646;
+    --neo-marigold: #FFA901;
+    --neo-red: #D43300;
+    --neo-surface: #F5F7FA;
+    --neo-text: #1B1B1B;
+    --neo-muted: #525252;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f9fb;
+    color: var(--neo-text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #sidebar {
+    width: 380px;
+    min-width: 380px;
+    background: white;
+    border-right: 1px solid #e0e4ea;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e4ea;
+    background: linear-gradient(135deg, var(--neo-dark), var(--neo-blue));
+    color: white;
+  }
+
+  .sidebar-header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .sidebar-header p {
+    font-size: 11px;
+    opacity: 0.8;
+  }
+
+  .toolbar {
+    padding: 10px 20px;
+    border-bottom: 1px solid #e0e4ea;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 6px 14px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+
+  .btn:hover { background: var(--neo-surface); border-color: var(--neo-teal); }
+  .btn.primary { background: var(--neo-blue); color: white; border-color: var(--neo-blue); }
+  .btn.primary:hover { background: var(--neo-dark); }
+  .btn.danger { background: var(--neo-red); color: white; border-color: var(--neo-red); }
+  .btn.danger:hover { opacity: 0.9; }
+
+  #node-info {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+
+  .info-empty {
+    color: var(--neo-muted);
+    font-size: 13px;
+    text-align: center;
+    margin-top: 40px;
+    line-height: 1.6;
+  }
+
+  .info-card {
+    background: var(--neo-surface);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+
+  .info-card h3 {
+    font-size: 14px;
+    color: var(--neo-blue);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .info-card .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  .badge-done { background: #dff5e3; color: #145439; }
+  .badge-pending { background: #fff3cd; color: #856404; }
+
+  .info-card .detail {
+    font-size: 12px;
+    color: var(--neo-muted);
+    margin: 4px 0;
+  }
+
+  .info-card .detail strong { color: var(--neo-text); }
+
+  .path-list { list-style: none; }
+
+  .path-item {
+    background: white;
+    border: 1px solid #e0e4ea;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .path-item:hover { border-color: var(--neo-teal); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .path-item.active { border-color: var(--neo-marigold); background: #fffbf0; }
+
+  .path-item .cost {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--neo-red);
+  }
+
+  .path-item .frontier {
+    font-size: 11px;
+    color: var(--neo-muted);
+    margin-top: 2px;
+  }
+
+  .path-item .path-nodes {
+    font-size: 10px;
+    color: var(--neo-blue);
+    margin-top: 4px;
+    word-break: break-all;
+  }
+
+  #cy {
+    flex: 1;
+    background: #f8f9fb;
+  }
+
+  .legend {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    background: white;
+    border: 1px solid #e0e4ea;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    z-index: 10;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 3px 0;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #888;
+  }
+
+  .loading-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--neo-blue);
+    z-index: 1000;
+    display: none;
+  }
+
+  .loading-overlay.show { display: flex; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sidebar-header">
+    <h1>CPA at Scale Explorer</h1>
+    <p>Click a node to compute critical paths. Right-click to toggle completion.</p>
+  </div>
+  <div class="toolbar">
+    <button class="btn primary" onclick="resetDataset()">Reset Dataset</button>
+    <button class="btn" onclick="fitGraph()">Fit View</button>
+    <button class="btn" onclick="clearSelection()">Clear Selection</button>
+  </div>
+  <div id="node-info">
+    <div class="info-empty">
+      Click on any node in the graph to see its details and compute critical paths.<br><br>
+      <strong>Left-click</strong> = select + CPA<br>
+      <strong>Right-click</strong> = toggle Done
+    </div>
+  </div>
+</div>
+
+<div id="cy"></div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#6FA646;border-color:#145439"></div> Done</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E8F3F8;border-color:#0A6190"></div> Pending</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FFA901;border-color:#C07A00"></div> Selected / scoping node</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#D43300;border-color:#9E2500"></div> Critical path</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#8FE3E8;border-color:#0A6190"></div> Frontier node</div>
+</div>
+
+<div class="loading-overlay" id="loading">Computing...</div>
+
+<script>
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  style: [
+    {
+      selector: 'node',
+      style: {
+        'label': 'data(label)',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'font-size': '8px',
+        'font-weight': '500',
+        'font-family': '-apple-system, sans-serif',
+        'background-color': '#E8F3F8',
+        'border-width': 2,
+        'border-color': '#0A6190',
+        'color': '#014063',
+        'width': 'mapData(duration, 1, 15, 35, 70)',
+        'height': 'mapData(duration, 1, 15, 35, 70)',
+        'text-wrap': 'wrap',
+        'text-max-width': '80px',
+      }
+    },
+    {
+      selector: 'node[done]',
+      style: {
+        'background-color': '#dff5e3',
+        'border-color': '#145439',
+        'color': '#145439',
+        'opacity': 0.6,
+      }
+    },
+    {
+      selector: 'node.selected-node',
+      style: {
+        'background-color': '#FFA901',
+        'border-color': '#C07A00',
+        'border-width': 3,
+        'color': '#4A2D00',
+        'opacity': 1,
+        'z-index': 10,
+      }
+    },
+    {
+      selector: 'node.critical-path',
+      style: {
+        'background-color': '#FDECE8',
+        'border-color': '#D43300',
+        'border-width': 3,
+        'color': '#D43300',
+        'opacity': 1,
+        'z-index': 10,
+      }
+    },
+    {
+      selector: 'node.frontier-node',
+      style: {
+        'background-color': '#8FE3E8',
+        'border-color': '#0A6190',
+        'border-width': 3,
+        'color': '#014063',
+        'opacity': 1,
+        'z-index': 10,
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'width': 1.5,
+        'line-color': '#b0bec5',
+        'target-arrow-color': '#b0bec5',
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier',
+        'arrow-scale': 0.8,
+        'opacity': 0.5,
+      }
+    },
+    {
+      selector: 'edge.critical-edge',
+      style: {
+        'width': 3,
+        'line-color': '#D43300',
+        'target-arrow-color': '#D43300',
+        'opacity': 1,
+        'z-index': 10,
+      }
+    },
+    {
+      selector: 'node.dimmed',
+      style: { 'opacity': 0.15 }
+    },
+    {
+      selector: 'edge.dimmed',
+      style: { 'opacity': 0.08 }
+    },
+  ],
+  layout: { name: 'preset' },
+  minZoom: 0.2,
+  maxZoom: 3,
+  wheelSensitivity: 0.3,
+});
+
+let graphData = null;
+let currentCpa = null;
+
+function showLoading(msg) {
+  const el = document.getElementById('loading');
+  el.textContent = msg || 'Computing...';
+  el.classList.add('show');
+}
+
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+
+async function loadGraph() {
+  showLoading('Loading graph...');
+  const resp = await fetch('/api/graph');
+  graphData = await resp.json();
+  renderGraph();
+  hideLoading();
+}
+
+function renderGraph() {
+  cy.elements().remove();
+  const elements = [];
+
+  for (const node of graphData.nodes) {
+    const shortName = node.name.replace(/_/g, '\n');
+    const el = {
+      group: 'nodes',
+      data: {
+        id: String(node.uid),
+        label: shortName,
+        name: node.name,
+        duration: node.duration,
+        uid: node.uid,
+      }
+    };
+    if (node.done) el.data.done = true;
+    elements.push(el);
+  }
+
+  for (const edge of graphData.edges) {
+    elements.push({
+      group: 'edges',
+      data: {
+        id: `e_${edge.source}_${edge.target}`,
+        source: String(edge.source),
+        target: String(edge.target),
+      }
+    });
+  }
+
+  cy.add(elements);
+
+  cy.layout({
+    name: 'dagre',
+    rankDir: 'LR',
+    nodeSep: 30,
+    edgeSep: 10,
+    rankSep: 80,
+    padding: 30,
+  }).run();
+
+  cy.fit(undefined, 40);
+}
+
+function clearSelection() {
+  cy.elements().removeClass('selected-node critical-path frontier-node critical-edge dimmed');
+  currentCpa = null;
+  document.getElementById('node-info').innerHTML = `
+    <div class="info-empty">
+      Click on any node in the graph to see its details and compute critical paths.<br><br>
+      <strong>Left-click</strong> = select + CPA<br>
+      <strong>Right-click</strong> = toggle Done
+    </div>`;
+}
+
+function fitGraph() {
+  cy.fit(undefined, 40);
+}
+
+async function selectNode(uid) {
+  clearSelection();
+  const node = cy.getElementById(String(uid));
+  node.addClass('selected-node');
+
+  const data = node.data();
+  const isDone = !!data.done;
+
+  let infoHtml = `
+    <div class="info-card">
+      <h3>${data.name} <span class="badge ${isDone ? 'badge-done' : 'badge-pending'}">${isDone ? 'DONE' : 'PENDING'}</span></h3>
+      <div class="detail"><strong>UID:</strong> ${data.uid}</div>
+      <div class="detail"><strong>Duration:</strong> ${data.duration}h</div>
+      <div style="margin-top:10px; display:flex; gap:6px;">
+        ${isDone
+          ? `<button class="btn" onclick="toggleDone(${uid}, false)">Mark Undone (+ descendants)</button>`
+          : `<button class="btn primary" onclick="toggleDone(${uid}, true)">Mark Done (+ ancestors)</button>`
+        }
+      </div>
+    </div>`;
+
+  if (isDone) {
+    infoHtml += `<div class="info-card"><h3>CPA</h3><div class="detail">This task is already completed. No critical path to compute.</div></div>`;
+    document.getElementById('node-info').innerHTML = infoHtml;
+    return;
+  }
+
+  infoHtml += `<div class="info-card"><h3>Critical Paths</h3><div class="detail" id="cpa-loading">Computing...</div></div>`;
+  document.getElementById('node-info').innerHTML = infoHtml;
+
+  try {
+    const resp = await fetch(`/api/cpa/${uid}`);
+    const result = await resp.json();
+    currentCpa = result.paths;
+
+    if (currentCpa.length === 0) {
+      document.getElementById('cpa-loading').innerHTML = 'No pending upstream paths (this is a frontier node).';
+      return;
+    }
+
+    // Highlight all CPA paths
+    const allPathUids = new Set();
+    for (const p of currentCpa) {
+      for (const u of p.pathUids) allPathUids.add(String(u));
+    }
+
+    // Dim everything except paths
+    cy.elements().addClass('dimmed');
+    node.removeClass('dimmed').addClass('selected-node');
+
+    for (const uidStr of allPathUids) {
+      cy.getElementById(uidStr).removeClass('dimmed');
+    }
+
+    // Highlight first (longest) path by default
+    highlightPath(0);
+
+    let pathsHtml = '<ul class="path-list">';
+    for (let i = 0; i < currentCpa.length; i++) {
+      const p = currentCpa[i];
+      pathsHtml += `
+        <li class="path-item ${i === 0 ? 'active' : ''}" onclick="highlightPath(${i})" id="path-${i}">
+          <div class="cost">${p.criticalPathDuration.toFixed(1)}h</div>
+          <div class="frontier">Frontier: ${p.criticalFrontier}</div>
+          <div class="path-nodes">${p.pathNames.join(' → ')}</div>
+        </li>`;
+    }
+    pathsHtml += '</ul>';
+
+    const cpaCard = document.getElementById('cpa-loading');
+    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3>Critical Paths (${currentCpa.length})</h3>${pathsHtml}`;
+  } catch (e) {
+    const cpaCard = document.getElementById('cpa-loading');
+    if (cpaCard) cpaCard.innerHTML = `Error: ${e.message}`;
+  }
+}
+
+function highlightPath(index) {
+  // Reset previous path highlights
+  cy.elements().removeClass('critical-path frontier-node critical-edge');
+
+  // Reapply dimming except selected node
+  const allPathUids = new Set();
+  if (currentCpa) {
+    for (const p of currentCpa) {
+      for (const u of p.pathUids) allPathUids.add(String(u));
+    }
+  }
+
+  const path = currentCpa[index];
+  const pathUids = path.pathUids.map(String);
+
+  // Highlight path nodes
+  for (const uid of pathUids) {
+    const n = cy.getElementById(uid);
+    n.removeClass('dimmed').addClass('critical-path');
+  }
+
+  // Keep selected node style
+  const selectedUid = pathUids[0];
+  cy.getElementById(selectedUid).removeClass('critical-path').addClass('selected-node');
+
+  // Mark frontier
+  const frontierUid = String(path.frontierUid);
+  cy.getElementById(frontierUid).removeClass('critical-path').addClass('frontier-node');
+
+  // Highlight edges along path (try both directions since path is reversed)
+  for (let i = 0; i < pathUids.length - 1; i++) {
+    const a = pathUids[i], b = pathUids[i+1];
+    let edge = cy.getElementById(`e_${a}_${b}`);
+    if (!edge.length) edge = cy.getElementById(`e_${b}_${a}`);
+    if (edge.length) {
+      edge.removeClass('dimmed').addClass('critical-edge');
+    }
+  }
+
+  // Un-dim other path nodes (from other paths)
+  for (const uid of allPathUids) {
+    cy.getElementById(uid).removeClass('dimmed');
+  }
+
+  // Update active state in sidebar
+  document.querySelectorAll('.path-item').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+}
+
+async function toggleDone(uid, markDone) {
+  showLoading(markDone ? 'Marking done...' : 'Marking undone...');
+  const endpoint = markDone ? `/api/complete/${uid}` : `/api/uncomplete/${uid}`;
+  await fetch(endpoint, { method: 'POST' });
+  await loadGraph();
+  hideLoading();
+  clearSelection();
+}
+
+async function resetDataset() {
+  if (!confirm('This will reset the database to the initial dataset. Continue?')) return;
+  showLoading('Resetting dataset...');
+  await fetch('/api/reset', { method: 'POST' });
+  await loadGraph();
+  hideLoading();
+  clearSelection();
+}
+
+// Events
+cy.on('tap', 'node', (evt) => {
+  selectNode(Number(evt.target.data('uid')));
+});
+
+cy.on('cxttap', 'node', (evt) => {
+  evt.originalEvent.preventDefault();
+  const data = evt.target.data();
+  toggleDone(data.uid, !data.done);
+});
+
+cy.on('tap', (evt) => {
+  if (evt.target === cy) clearSelection();
+});
+
+// Init
+loadGraph();
+</script>
+</body>
+</html>
