@@ -6,6 +6,8 @@
 
 ## Try It Now
 
+> **Warning:** The app loads demo datasets by deleting all existing data (`MATCH (n) DETACH DELETE n`). **Do not point it at a database you care about.**
+
 Requires a running Neo4j instance with **GDS** and **APOC** plugins (local, Aura, or remote).
 
 ```bash
