@@ -189,7 +189,28 @@ def compute_cpa(uid: int):
         # Cleanup
         session.run("CALL gds.graph.drop($name, false)", name=graph_name)
 
-        return {"paths": paths}
+        # Collect full ancestor subgraph (non-Done) for highlighting
+        ancestor_result = session.run("""
+            MATCH (scopingNode:Task {uid: $uid})
+            CALL apoc.path.subgraphNodes(scopingNode, {
+                relationshipFilter: "<PRECEDES",
+                minLevel: 0
+            })
+            YIELD node AS n
+            WHERE NOT n:Done
+            WITH collect(n.uid) AS ancestorUids
+            UNWIND ancestorUids AS aUid
+            MATCH (a:Task {uid: aUid})
+            OPTIONAL MATCH (a)<-[:PRECEDES]-(b:Task&!Done)
+            WHERE b.uid IN ancestorUids
+            RETURN ancestorUids,
+                   collect(DISTINCT [b.uid, a.uid]) AS ancestorEdges
+        """, uid=uid)
+        anc = ancestor_result.single()
+        ancestor_uids = anc["ancestorUids"] if anc else []
+        ancestor_edges = [[e[0], e[1]] for e in (anc["ancestorEdges"] if anc else []) if e[0] is not None]
+
+        return {"paths": paths, "ancestorUids": ancestor_uids, "ancestorEdges": ancestor_edges}
 
 
 @app.post("/api/reset")

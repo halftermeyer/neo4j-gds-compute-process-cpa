@@ -246,6 +246,7 @@
   <div class="legend-item"><div class="legend-dot" style="background:#FFA901;border-color:#C07A00"></div> Selected / scoping node</div>
   <div class="legend-item"><div class="legend-dot" style="background:#D43300;border-color:#9E2500"></div> Critical path</div>
   <div class="legend-item"><div class="legend-dot" style="background:#8FE3E8;border-color:#0A6190"></div> Frontier node</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FDF0CC;border-color:#C07A00"></div> Upstream subgraph</div>
 </div>
 
 <div class="loading-overlay" id="loading">Computing...</div>
@@ -338,6 +339,27 @@ const cy = cytoscape({
       }
     },
     {
+      selector: 'node.ancestor-node',
+      style: {
+        'background-color': '#FDF0CC',
+        'border-color': '#C07A00',
+        'border-width': 1.5,
+        'color': '#856404',
+        'opacity': 0.5,
+        'z-index': 5,
+      }
+    },
+    {
+      selector: 'edge.ancestor-edge',
+      style: {
+        'width': 1.5,
+        'line-color': '#FFC450',
+        'target-arrow-color': '#FFC450',
+        'opacity': 0.35,
+        'z-index': 5,
+      }
+    },
+    {
       selector: 'node.dimmed',
       style: { 'opacity': 0.15 }
     },
@@ -354,6 +376,9 @@ const cy = cytoscape({
 
 let graphData = null;
 let currentCpa = null;
+let currentAncestorUids = [];
+let currentAncestorEdges = [];
+let currentScopingUid = null;
 
 function showLoading(msg) {
   const el = document.getElementById('loading');
@@ -419,8 +444,11 @@ function renderGraph() {
 }
 
 function clearSelection() {
-  cy.elements().removeClass('selected-node critical-path frontier-node critical-edge dimmed');
+  cy.elements().removeClass('selected-node critical-path frontier-node critical-edge ancestor-node ancestor-edge dimmed');
   currentCpa = null;
+  currentAncestorUids = [];
+  currentAncestorEdges = [];
+  currentScopingUid = null;
   document.getElementById('node-info').innerHTML = `
     <div class="info-empty">
       Click on any node in the graph to see its details and compute critical paths.<br><br>
@@ -467,22 +495,23 @@ async function selectNode(uid) {
     const resp = await fetch(`/api/cpa/${uid}`);
     const result = await resp.json();
     currentCpa = result.paths;
+    currentAncestorUids = (result.ancestorUids || []).map(String);
+    currentAncestorEdges = result.ancestorEdges || [];
+    currentScopingUid = uid;
 
     if (currentCpa.length === 0) {
       document.getElementById('cpa-loading').innerHTML = 'No pending upstream paths (this is a frontier node).';
       return;
     }
 
-    // Highlight all CPA paths
+    // Dim everything, then un-dim path nodes
+    cy.elements().addClass('dimmed');
+    node.removeClass('dimmed').addClass('selected-node');
+
     const allPathUids = new Set();
     for (const p of currentCpa) {
       for (const u of p.pathUids) allPathUids.add(String(u));
     }
-
-    // Dim everything except paths
-    cy.elements().addClass('dimmed');
-    node.removeClass('dimmed').addClass('selected-node');
-
     for (const uidStr of allPathUids) {
       cy.getElementById(uidStr).removeClass('dimmed');
     }
@@ -490,14 +519,15 @@ async function selectNode(uid) {
     // Highlight first (longest) path by default
     highlightPath(0);
 
-    let pathsHtml = '<ul class="path-list">';
+    let pathsHtml = `<button class="btn" onclick="highlightAllPaths()" id="btn-all" style="width:100%;margin-bottom:10px;">Show All Paths + Upstream Subgraph</button>`;
+    pathsHtml += '<ul class="path-list">';
     for (let i = 0; i < currentCpa.length; i++) {
       const p = currentCpa[i];
       pathsHtml += `
         <li class="path-item ${i === 0 ? 'active' : ''}" onclick="highlightPath(${i})" id="path-${i}">
           <div class="cost">${p.criticalPathDuration.toFixed(1)}h</div>
           <div class="frontier">Frontier: ${p.criticalFrontier}</div>
-          <div class="path-nodes">${p.pathNames.join(' → ')}</div>
+          <div class="path-nodes">${p.pathNames.join(' \u2192 ')}</div>
         </li>`;
     }
     pathsHtml += '</ul>';
@@ -510,54 +540,108 @@ async function selectNode(uid) {
   }
 }
 
-function highlightPath(index) {
-  // Reset previous path highlights
-  cy.elements().removeClass('critical-path frontier-node critical-edge');
+function findEdge(a, b) {
+  let edge = cy.getElementById(`e_${a}_${b}`);
+  if (!edge.length) edge = cy.getElementById(`e_${b}_${a}`);
+  return edge;
+}
 
-  // Reapply dimming except selected node
+function highlightPath(index) {
+  // Reset path + ancestor highlights (keep dimming)
+  cy.elements().removeClass('critical-path frontier-node critical-edge ancestor-node ancestor-edge');
+
+  // Re-dim everything, un-dim all path nodes across all paths
+  cy.elements().addClass('dimmed');
+  const scopingNode = cy.getElementById(String(currentScopingUid));
+  scopingNode.removeClass('dimmed').addClass('selected-node');
+
   const allPathUids = new Set();
   if (currentCpa) {
     for (const p of currentCpa) {
       for (const u of p.pathUids) allPathUids.add(String(u));
     }
   }
-
-  const path = currentCpa[index];
-  const pathUids = path.pathUids.map(String);
-
-  // Highlight path nodes
-  for (const uid of pathUids) {
-    const n = cy.getElementById(uid);
-    n.removeClass('dimmed').addClass('critical-path');
-  }
-
-  // Keep selected node style
-  const selectedUid = pathUids[0];
-  cy.getElementById(selectedUid).removeClass('critical-path').addClass('selected-node');
-
-  // Mark frontier
-  const frontierUid = String(path.frontierUid);
-  cy.getElementById(frontierUid).removeClass('critical-path').addClass('frontier-node');
-
-  // Highlight edges along path (try both directions since path is reversed)
-  for (let i = 0; i < pathUids.length - 1; i++) {
-    const a = pathUids[i], b = pathUids[i+1];
-    let edge = cy.getElementById(`e_${a}_${b}`);
-    if (!edge.length) edge = cy.getElementById(`e_${b}_${a}`);
-    if (edge.length) {
-      edge.removeClass('dimmed').addClass('critical-edge');
-    }
-  }
-
-  // Un-dim other path nodes (from other paths)
   for (const uid of allPathUids) {
     cy.getElementById(uid).removeClass('dimmed');
   }
 
-  // Update active state in sidebar
+  // Highlight the selected path
+  const path = currentCpa[index];
+  const pathUids = path.pathUids.map(String);
+
+  for (const uid of pathUids) {
+    cy.getElementById(uid).removeClass('dimmed').addClass('critical-path');
+  }
+
+  // Scoping node keeps its gold style
+  scopingNode.removeClass('critical-path').addClass('selected-node');
+
+  // Frontier
+  const frontierUid = String(path.frontierUid);
+  cy.getElementById(frontierUid).removeClass('critical-path').addClass('frontier-node');
+
+  // Edges along path
+  for (let i = 0; i < pathUids.length - 1; i++) {
+    const edge = findEdge(pathUids[i], pathUids[i+1]);
+    if (edge.length) edge.removeClass('dimmed').addClass('critical-edge');
+  }
+
+  // Update sidebar active state
   document.querySelectorAll('.path-item').forEach((el, i) => {
     el.classList.toggle('active', i === index);
   });
+  const btnAll = document.getElementById('btn-all');
+  if (btnAll) btnAll.classList.remove('primary');
+}
+
+function highlightAllPaths() {
+  // Reset
+  cy.elements().removeClass('critical-path frontier-node critical-edge ancestor-node ancestor-edge');
+  cy.elements().addClass('dimmed');
+
+  const scopingNode = cy.getElementById(String(currentScopingUid));
+  scopingNode.removeClass('dimmed').addClass('selected-node');
+
+  // 1. Show ancestor subgraph softly
+  const ancestorSet = new Set(currentAncestorUids);
+  for (const uid of currentAncestorUids) {
+    cy.getElementById(uid).removeClass('dimmed').addClass('ancestor-node');
+  }
+  for (const [src, tgt] of currentAncestorEdges) {
+    const edge = findEdge(String(src), String(tgt));
+    if (edge.length) edge.removeClass('dimmed').addClass('ancestor-edge');
+  }
+
+  // 2. Overlay all critical paths in red
+  const allPathUids = new Set();
+  const allFrontierUids = new Set();
+  for (const p of currentCpa) {
+    for (const u of p.pathUids) allPathUids.add(String(u));
+    allFrontierUids.add(String(p.frontierUid));
+
+    const pathUids = p.pathUids.map(String);
+    for (let i = 0; i < pathUids.length - 1; i++) {
+      const edge = findEdge(pathUids[i], pathUids[i+1]);
+      if (edge.length) edge.removeClass('ancestor-edge dimmed').addClass('critical-edge');
+    }
+  }
+
+  for (const uid of allPathUids) {
+    cy.getElementById(uid).removeClass('ancestor-node dimmed').addClass('critical-path');
+  }
+
+  // Scoping node gold
+  scopingNode.removeClass('critical-path ancestor-node').addClass('selected-node');
+
+  // Frontiers cyan
+  for (const uid of allFrontierUids) {
+    cy.getElementById(uid).removeClass('critical-path').addClass('frontier-node');
+  }
+
+  // Update sidebar
+  document.querySelectorAll('.path-item').forEach(el => el.classList.remove('active'));
+  const btnAll = document.getElementById('btn-all');
+  if (btnAll) btnAll.classList.add('primary');
 }
 
 async function toggleDone(uid, markDone) {
