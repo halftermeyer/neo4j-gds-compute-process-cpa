@@ -1,3 +1,5 @@
+name: cpa-explorer
+
 services:
   app:
     build: ./app
