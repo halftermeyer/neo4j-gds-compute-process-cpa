@@ -199,7 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--done", type=float, default=0.3, help="Fraction of done tasks (default: 0.3)")
     parser.add_argument("--uri", default=os.getenv("NEO4J_URI", "bolt://localhost:7687"))
     parser.add_argument("--user", default=os.getenv("NEO4J_USER", "neo4j"))
-    parser.add_argument("--password", default=os.getenv("NEO4J_PASSWORD", "pierre!!!"))
+    parser.add_argument("--password", default=os.getenv("NEO4J_PASSWORD", ""))
     args = parser.parse_args()
 
     print(f"Generating dataset: {args.layers} layers, ~{args.width} width, density={args.density}, seed={args.seed}")
