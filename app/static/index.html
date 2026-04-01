@@ -836,6 +836,12 @@ async function resetLargeDataset() {
   showLoading(`Generating ${layers} layers x ~${width} width, density=${density}...`);
   try {
     const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&density=${density}&seed=${seed}&done=0.3`, { method: 'POST' });
+    if (!resp.ok) {
+      const err = await resp.text();
+      hideLoading();
+      alert('Server error: ' + err);
+      return;
+    }
     const result = await resp.json();
     showLoading(`Loading ${result.nodes} nodes, ${result.edges} edges...`);
     await loadGraph();
