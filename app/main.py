@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from neo4j import GraphDatabase
 import os
+import time
 
 app = FastAPI()
 
@@ -149,6 +150,7 @@ def compute_cpa(uid: int):
     """Compute CPA for a given scoping node. Returns longest paths to frontier nodes."""
     driver = get_driver()
     graph_name = f"cpa_{uid}"
+    t0 = time.perf_counter()
     with driver.session() as session:
         # Drop existing projection if any
         try:
@@ -256,7 +258,8 @@ def compute_cpa(uid: int):
         ancestor_uids = anc["ancestorUids"] if anc else []
         ancestor_edges = [[e[0], e[1]] for e in (anc["ancestorEdges"] if anc else []) if e[0] is not None]
 
-        return {"paths": paths, "ancestorUids": ancestor_uids, "ancestorEdges": ancestor_edges}
+        elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return {"paths": paths, "ancestorUids": ancestor_uids, "ancestorEdges": ancestor_edges, "elapsed_ms": elapsed_ms}
 
 
 @app.post("/api/reset")

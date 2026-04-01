@@ -695,7 +695,8 @@ async function selectNode(uid) {
     pathsHtml += '</ul>';
 
     const cpaCard = document.getElementById('cpa-loading');
-    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3>Critical Paths (${currentCpa.length})</h3>${pathsHtml}`;
+    const elapsed = result.elapsed_ms != null ? `<span style="font-size:11px;font-weight:400;color:var(--neo-muted);float:right;">${result.elapsed_ms} ms</span>` : '';
+    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3>Critical Paths (${currentCpa.length}) ${elapsed}</h3>${pathsHtml}`;
   } catch (e) {
     const cpaCard = document.getElementById('cpa-loading');
     if (cpaCard) cpaCard.innerHTML = `Error: ${e.message}`;
