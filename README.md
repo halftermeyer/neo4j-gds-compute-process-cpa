@@ -2,6 +2,8 @@
 
 > Critical Path Analysis of process DAGs using Neo4j Graph Data Science, with scoped projection and virtual node splitting for real-time performance on large, dynamic graphs.
 
+![CPA Explorer App](app_screenshot.png)
+
 ## Try It Now
 
 Requires a running Neo4j instance with **GDS** and **APOC** plugins (local, Aura, or remote).
