@@ -431,14 +431,25 @@ function renderGraph() {
 
   cy.add(elements);
 
-  cy.layout({
-    name: 'dagre',
-    rankDir: 'LR',
-    nodeSep: 30,
-    edgeSep: 10,
-    rankSep: 80,
-    padding: 30,
-  }).run();
+  const nodeCount = graphData.nodes.length;
+  if (nodeCount <= 200) {
+    cy.layout({
+      name: 'dagre',
+      rankDir: 'LR',
+      nodeSep: 30,
+      edgeSep: 10,
+      rankSep: 80,
+      padding: 30,
+    }).run();
+  } else {
+    // Fast breadthfirst layout for large graphs
+    cy.layout({
+      name: 'breadthfirst',
+      directed: true,
+      spacingFactor: nodeCount > 500 ? 0.5 : 0.75,
+      padding: 30,
+    }).run();
+  }
 
   cy.fit(undefined, 40);
 }
