@@ -473,24 +473,17 @@ function renderGraph() {
   cy.add(elements);
 
   const nodeCount = graphData.nodes.length;
-  if (nodeCount <= 200) {
-    cy.layout({
-      name: 'dagre',
-      rankDir: 'LR',
-      nodeSep: 30,
-      edgeSep: 10,
-      rankSep: 80,
-      padding: 30,
-    }).run();
-  } else {
-    // Fast breadthfirst layout for large graphs
-    cy.layout({
-      name: 'breadthfirst',
-      directed: true,
-      spacingFactor: nodeCount > 500 ? 0.5 : 0.75,
-      padding: 30,
-    }).run();
-  }
+  // Always use dagre LR for consistent left-to-right DAG rendering.
+  // Reduce spacing on large graphs to keep layout tractable.
+  const large = nodeCount > 200;
+  cy.layout({
+    name: 'dagre',
+    rankDir: 'LR',
+    nodeSep: large ? 10 : 30,
+    edgeSep: large ? 5 : 10,
+    rankSep: large ? 40 : 80,
+    padding: 30,
+  }).run();
 
   // Store base positions for spacing sliders
   basePositions = {};
