@@ -214,6 +214,41 @@
   }
 
   .loading-overlay.show { display: flex; }
+
+  .spacing-controls {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: white;
+    border: 1px solid #e0e4ea;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 160px;
+  }
+
+  .spacing-controls label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--neo-muted);
+    font-weight: 500;
+  }
+
+  .spacing-controls label span {
+    min-width: 52px;
+  }
+
+  .spacing-controls input[type="range"] {
+    flex: 1;
+    accent-color: var(--neo-teal);
+    height: 4px;
+  }
 </style>
 </head>
 <body>
@@ -239,6 +274,11 @@
 </div>
 
 <div id="cy"></div>
+
+<div class="spacing-controls">
+  <label><span>X spacing</span> <input type="range" id="x-spacing" min="0.2" max="5" step="0.1" value="1.0" oninput="applySpacing()"></label>
+  <label><span>Y spacing</span> <input type="range" id="y-spacing" min="0.2" max="5" step="0.1" value="1.0" oninput="applySpacing()"></label>
+</div>
 
 <div class="legend">
   <div class="legend-item"><div class="legend-dot" style="background:#6FA646;border-color:#145439"></div> Done</div>
@@ -379,6 +419,7 @@ let currentCpa = null;
 let currentAncestorUids = [];
 let currentAncestorEdges = [];
 let currentScopingUid = null;
+let basePositions = {};  // uid -> {x, y} from layout
 
 function showLoading(msg) {
   const el = document.getElementById('loading');
@@ -451,7 +492,31 @@ function renderGraph() {
     }).run();
   }
 
+  // Store base positions for spacing sliders
+  basePositions = {};
+  cy.nodes().forEach(n => {
+    const pos = n.position();
+    basePositions[n.id()] = { x: pos.x, y: pos.y };
+  });
+
+  // Reset sliders
+  document.getElementById('x-spacing').value = 1.0;
+  document.getElementById('y-spacing').value = 1.0;
+
   cy.fit(undefined, 40);
+}
+
+function applySpacing() {
+  const sx = parseFloat(document.getElementById('x-spacing').value);
+  const sy = parseFloat(document.getElementById('y-spacing').value);
+  cy.batch(() => {
+    cy.nodes().forEach(n => {
+      const base = basePositions[n.id()];
+      if (base) {
+        n.position({ x: base.x * sx, y: base.y * sy });
+      }
+    });
+  });
 }
 
 function clearSelection() {
