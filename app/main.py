@@ -64,7 +64,7 @@ def connect(req: ConnectRequest):
             for statement in cypher.split(";"):
                 statement = statement.strip()
                 if statement:
-                    session.run(statement)
+                    session.run("CYPHER 25 " + statement)
 
     return {"status": "ok", "uri": req.uri, "user": req.user}
 
@@ -270,7 +270,7 @@ def reset_dataset():
         for statement in cypher.split(";"):
             statement = statement.strip()
             if statement:
-                session.run(statement)
+                session.run("CYPHER 25 " + statement)
     return {"status": "ok"}
 
 

@@ -152,7 +152,7 @@ def load_to_neo4j(nodes, edges, done_uids, uri, user, password):
 
     with driver.session() as session:
         # Clean
-        session.run("MATCH (n) DETACH DELETE n")
+        session.run("CYPHER 25 MATCH (n) DETACH DELETE n")
 
         # Create index for fast lookups
         session.run("CREATE INDEX task_uid IF NOT EXISTS FOR (n:Task) ON (n.uid)")
@@ -165,7 +165,7 @@ def load_to_neo4j(nodes, edges, done_uids, uri, user, password):
                 "uid": uid, "name": name, "duration": dur,
                 "done": uid in done_uids
             } for uid, name, dur, layer in batch]
-            session.run("""
+            session.run("""CYPHER 25
                 UNWIND $batch AS p
                 CALL (p) {
                     CREATE (n:Task {uid: p.uid, name: p.name, duration: p.duration})
@@ -179,7 +179,7 @@ def load_to_neo4j(nodes, edges, done_uids, uri, user, password):
         for i in range(0, len(edges), batch_size):
             batch = edges[i:i + batch_size]
             params = [{"src": s, "tgt": t} for s, t in batch]
-            session.run("""
+            session.run("""CYPHER 25
                 UNWIND $batch AS e
                 MATCH (a:Task {uid: e.src})
                 MATCH (b:Task {uid: e.tgt})
