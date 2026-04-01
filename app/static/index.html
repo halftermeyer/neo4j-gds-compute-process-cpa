@@ -579,11 +579,15 @@ async function resetDataset() {
 }
 
 async function resetLargeDataset() {
-  const input = prompt('Generate huge dataset.\nFormat: layers,width,seed (default: 20,25,42)', '20,25,42');
+  const input = prompt('Generate huge dataset.\nFormat: layers,width,density,seed (default: 20,25,0.5,42)\n\ndensity 0.0 = sparse tree, 1.0 = dense mesh', '20,25,0.5,42');
   if (!input) return;
-  const [layers, width, seed] = input.split(',').map(s => parseInt(s.trim()));
-  showLoading(`Generating ${layers} layers x ~${width} width...`);
-  const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&seed=${seed}&done=0.3`, { method: 'POST' });
+  const parts = input.split(',').map(s => s.trim());
+  const layers = parseInt(parts[0]) || 20;
+  const width = parseInt(parts[1]) || 25;
+  const density = parseFloat(parts[2]) || 0.5;
+  const seed = parseInt(parts[3]) || 42;
+  showLoading(`Generating ${layers} layers x ~${width} width, density=${density}...`);
+  const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&density=${density}&seed=${seed}&done=0.3`, { method: 'POST' });
   const result = await resp.json();
   showLoading(`Loading ${result.nodes} nodes, ${result.edges} edges...`);
   await loadGraph();

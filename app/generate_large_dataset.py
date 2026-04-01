@@ -49,7 +49,16 @@ def get_task_name(layer, index, num_layers):
 
 
 def generate(num_layers=20, base_width=25, seed=42, done_fraction=0.3,
-             intra_connect_prob=0.15, cross_layer_prob=0.03):
+             density=0.5):
+    # density (0.0–1.0) scales three knobs:
+    #   max_parents:        how many parents each node picks   1–8
+    #   intra_connect_prob: extra same-layer diamond edges     0–0.4
+    #   cross_layer_prob:   skip-connections to earlier layers 0–0.08
+    d = max(0.0, min(1.0, density))
+    max_parents = max(1, int(1 + 7 * d))
+    intra_connect_prob = 0.4 * d
+    cross_layer_prob = 0.08 * d
+
     rng = random.Random(seed)
 
     nodes = []  # list of (uid, name, duration, layer)
@@ -81,8 +90,8 @@ def generate(num_layers=20, base_width=25, seed=42, done_fraction=0.3,
         if layer > 0:
             prev_uids = layer_nodes[layer - 1]
             for uid in layer_uids:
-                # Each node connects to 1-4 nodes in the previous layer
-                num_parents = rng.randint(1, min(4, len(prev_uids)))
+                # Each node connects to 1–max_parents nodes in the previous layer
+                num_parents = rng.randint(1, min(max_parents, len(prev_uids)))
                 parents = rng.sample(prev_uids, num_parents)
                 for parent_uid in parents:
                     edges.append((parent_uid, uid))
@@ -91,7 +100,7 @@ def generate(num_layers=20, base_width=25, seed=42, done_fraction=0.3,
             # (creates diamonds)
             for uid in layer_uids:
                 for prev_uid in prev_uids:
-                    if (prev_uid, uid) not in set(edges[-len(layer_uids) * 4:]):
+                    if (prev_uid, uid) not in set(edges[-len(layer_uids) * max_parents:]):
                         if rng.random() < intra_connect_prob:
                             edges.append((prev_uid, uid))
 
@@ -186,16 +195,17 @@ if __name__ == "__main__":
     parser.add_argument("--layers", type=int, default=20, help="Number of layers (default: 20)")
     parser.add_argument("--width", type=int, default=25, help="Base width per layer (default: 25)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument("--density", type=float, default=0.5, help="Dependency density 0.0-1.0 (default: 0.5)")
     parser.add_argument("--done", type=float, default=0.3, help="Fraction of done tasks (default: 0.3)")
     parser.add_argument("--uri", default=os.getenv("NEO4J_URI", "bolt://localhost:7687"))
     parser.add_argument("--user", default=os.getenv("NEO4J_USER", "neo4j"))
     parser.add_argument("--password", default=os.getenv("NEO4J_PASSWORD", "pierre!!!"))
     args = parser.parse_args()
 
-    print(f"Generating dataset: {args.layers} layers, ~{args.width} width, seed={args.seed}")
+    print(f"Generating dataset: {args.layers} layers, ~{args.width} width, density={args.density}, seed={args.seed}")
     nodes, edges, done_uids = generate(
         num_layers=args.layers, base_width=args.width,
-        seed=args.seed, done_fraction=args.done,
+        seed=args.seed, done_fraction=args.done, density=args.density,
     )
     print(f"Generated: {len(nodes)} nodes, {len(edges)} edges, {len(done_uids)} done")
 

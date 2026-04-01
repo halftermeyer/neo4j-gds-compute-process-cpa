@@ -192,11 +192,13 @@ def reset_dataset():
 
 
 @app.post("/api/reset-large")
-def reset_large_dataset(layers: int = 20, width: int = 25, seed: int = 42, done: float = 0.3):
+def reset_large_dataset(layers: int = 20, width: int = 25, seed: int = 42,
+                        done: float = 0.3, density: float = 0.5):
     """Generate and load a large procedural dataset."""
     from generate_large_dataset import generate, load_to_neo4j
     nodes, edges, done_uids = generate(
-        num_layers=layers, base_width=width, seed=seed, done_fraction=done,
+        num_layers=layers, base_width=width, seed=seed,
+        done_fraction=done, density=density,
     )
     n, e, d = load_to_neo4j(
         nodes, edges, done_uids, NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD,
