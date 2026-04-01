@@ -1,71 +1,80 @@
 name,description,query,id,parentId,isFolder
-Customer Data,,,0,1,true
-clean,,"MATCH (ko:KickOff)
-OPTIONAL CALL (ko) { 
-WITH ko LIMIT 1
-DETACH DELETE ko
-};
-MATCH (x:End|Start)
-CALL (x) { DETACH DELETE x} IN TRANSACTIONS OF 1000 ROWS;
-CALL gds.graph.drop('g');",2,0,false
-compute job durations,,"MATCH (j:Job)
-CALL (j) {
-  WITH j.job_id AS job_id, duration.between(time(j.start_date), time(j.end_date)) AS duration
-  WITH job_id, duration, duration.seconds AS sec
-  SET j.duration = sec
-  } IN CONCURRENT TRANSACTIONS OF 1000 ROWS",3,0,false
-create index for merge,,"CREATE INDEX start_job_id IF NOT EXISTS FOR (s:Start) ON (s.job_id);
-CREATE INDEX end_job_id IF NOT EXISTS FOR (e:End) ON (e.job_id);",4,0,false
-time as rels,,"MATCH (j:Job)
-CALL (j) {
-  MERGE (s:Start {job_id: j.job_id})
-  MERGE (e:End {job_id: j.job_id})
-  MERGE (j)-[:STARTS]->(s)
-  MERGE (j)-[:ENDS]->(e)
-  MERGE (s)-[:TIME {duration: j.duration}]->(e)
-} IN CONCURRENT TRANSACTIONS OF 1000 ROWS",5,0,false
-dependency 3sec wait time,,"MATCH (j1)-[:DEPENDS]->(j0)
-CALL (j0, j1) {
-  MERGE (s:Start {job_id: j1.job_id})
-  MERGE (e:End {job_id: j0.job_id})
-  MERGE (e)-[:TIME {duration: 3}]->(s)
-} IN CONCURRENT TRANSACTIONS OF 1000 ROWS",6,0,false
-kickoff node,,MERGE (:KickOff),7,0,false
-kickOff to initial jobs,,"MATCH (j:Job)
-WITH duration.between (time(""00:00:00""), time(j.start_date)).seconds AS duration
-ORDER BY duration ASC LIMIT 1
-MATCH (ko:KickOff)
-WITH ko, duration
-MATCH (j:Job)-[:STARTS]->(s)
-WHERE NOT EXISTS {(j)-[:DEPENDS]->()}
-CALL (ko, s, duration) {
-  MERGE (ko)-[:TIME {duration: duration}]->(s)
-} IN TRANSACTIONS OF 1000 ROWS",8,0,false
-project in-memory graph,,"MATCH (source:Start|KickOff|End)
-OPTIONAL MATCH (source)-[r:TIME]->(target)
-RETURN gds.graph.project(""g"", source, target, {relationshipProperties: r {.duration}})",9,0,false
-stream critical paths,,"CALL gds.dag.longestPath.stream(""g"", {relationshipWeightProperty: ""duration""})
-YIELD targetNode as target, totalCost, path, costs
-WITH target AS last_activity, totalCost, path, costs
-ORDER BY totalCost DESC
-WITH last_activity, collect ({totalCost:totalCost, path:path, costs:costs})[0] AS longest
-RETURN last_activity, longest.totalCost AS critical_time, longest.path AS path, longest.costs AS costs",10,0,false
-stream crtitical times,,"CALL gds.dag.longestPath.stream(""g"", {relationshipWeightProperty: ""duration""})
-YIELD targetNode as target, totalCost, path, costs
-WITH gds.util.asNode(target).job_id AS last_activity, totalCost, path, costs
-ORDER BY totalCost DESC
-WITH last_activity, collect ({totalCost:totalCost, path:path, costs:costs})[0] AS longest
-WHERE last_activity IN [""a"",
-                        ""ab"",
-                        ""aba"",
-                        ""abaa"",
-                        ""abaaa"",
-                        ""abaaaa"",
-                        ""abaaaaa"",
-                        ""abaaaaaa"",
-                        ""abaaaaaae"",
-                        ""abaaaaaaea"",
-                        ""abaaaaaaeab""]
-WITH last_activity, longest.totalCost AS critical_time, longest.path AS path, longest.costs AS costs
-ORDER BY size(last_activity)
-RETURN last_activity, critical_time",11,0,false
+CPA at Scale,,,0,1,true
+Step 0: Create toy dataset,Two chained diamonds with sibling and cousin branches,"CREATE
+  (tA:Task:Done {uid: 1,  name: ""T_A"", duration: 2.0}),
+  (tB:Task      {uid: 2,  name: ""T_B"", duration: 1.0}),
+  (tC:Task      {uid: 3,  name: ""T_C"", duration: 3.0}),
+  (tD:Task      {uid: 4,  name: ""T_D"", duration: 1.0}),
+  (tE:Task      {uid: 5,  name: ""T_E"", duration: 0.5}),
+  (tF:Task      {uid: 6,  name: ""T_F"", duration: 2.0}),
+  (tG:Task      {uid: 7,  name: ""T_G"", duration: 0.5}),
+  (tH:Task {uid: 8,  name: ""T_H"", duration: 1.5}),
+  (tI:Task {uid: 9,  name: ""T_I"", duration: 1.0}),
+  (tJ:Task {uid: 10, name: ""T_J"", duration: 0.5}),
+  (tX:Task {uid: 11, name: ""T_X"", duration: 1.0}),
+  (tY:Task {uid: 12, name: ""T_Y"", duration: 1.0}),
+  (tA)-[:PRECEDES]->(tB), (tA)-[:PRECEDES]->(tC),
+  (tB)-[:PRECEDES]->(tD), (tC)-[:PRECEDES]->(tD),
+  (tD)-[:PRECEDES]->(tE), (tD)-[:PRECEDES]->(tF),
+  (tE)-[:PRECEDES]->(tG), (tF)-[:PRECEDES]->(tG),
+  (tF)-[:PRECEDES]->(tH),
+  (tD)-[:PRECEDES]->(tI), (tI)-[:PRECEDES]->(tJ),
+  (tX)-[:PRECEDES]->(tY)",1,0,false
+Step 1: Scope ancestors,Collect ancestor nodes using apoc.path with NODE_GLOBAL uniqueness,"MATCH (scopingNode:Task {name: ""T_G""})
+CALL apoc.path.subgraphNodes(scopingNode, {
+  relationshipFilter: ""<PRECEDES"",
+  minLevel: 0
+})
+YIELD node AS n
+RETURN n.name AS ancestor",2,0,false
+Step 3: Project subgraph into GDS,Scope + filter + node-split + project in one pass,"MATCH (scopingNode:Task {name: ""T_G""})
+CALL apoc.path.subgraphNodes(scopingNode, {
+  relationshipFilter: ""<PRECEDES"",
+  minLevel: 0
+})
+YIELD node AS n
+FILTER NOT n:Done
+OPTIONAL MATCH (n)<-[:PRECEDES]-(upstream:!Done)
+WITH
+  n, upstream,
+  2 * n.uid              AS n_in,
+  2 * n.uid + 1          AS n_out,
+  2 * upstream.uid + 1   AS upstream_out,
+  n.duration             AS weight
+CALL (*) {
+  RETURN n_in  AS source, n_out AS target, weight AS w
+  UNION
+  WITH upstream_out WHERE upstream_out IS NOT NULL
+  RETURN upstream_out AS source, n_in AS target, 0.0 AS w
+}
+WITH DISTINCT source, target, w
+WITH gds.graph.project(
+  'cpa_graph',
+  target,
+  source,
+  { relationshipProperties: { duration: w } }
+) AS g
+RETURN g.graphName AS graph, g.nodeCount AS nodes, g.relationshipCount AS rels",3,0,false
+Step 4: Compute CPA,Run dag.longestPath and map virtual IDs back to real nodes,"CALL gds.dag.longestPath.stream('cpa_graph', {
+  relationshipWeightProperty: ""duration""
+})
+YIELD sourceNode, targetNode, totalCost, nodeIds
+MATCH (source:Task {uid: sourceNode / 2})
+MATCH (frontier:Task {uid: targetNode / 2})
+WITH
+  targetNode,
+  source, frontier, totalCost,
+  [id IN nodeIds WHERE id % 2 = 0 |
+    head(collect { MATCH (n:Task {uid: id / 2}) RETURN n.name })
+  ] AS path
+FILTER targetNode % 2 = 0
+AND source.name = ""T_G""
+AND NOT EXISTS { (frontier)<-[:PRECEDES]-(upstream:!Done) }
+RETURN
+  source.name    AS scopingNode,
+  frontier.name  AS criticalFrontier,
+  totalCost      AS criticalPathDuration,
+  path           AS criticalPath
+ORDER BY totalCost DESC",4,0,false
+Step 5: Cleanup,Drop in-memory GDS projection,CALL gds.graph.drop('cpa_graph'),5,0,false
+Clean all data,Remove all nodes and relationships,"MATCH (n) DETACH DELETE n",6,0,false

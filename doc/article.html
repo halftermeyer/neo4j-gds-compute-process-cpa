@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-Time CPA at Scale: Scoping, Node Splitting, and GDS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Public+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[
+    {left:'$$',right:'$$',display:true},
+    {left:'$',right:'$',display:false}
+  ]});"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: {
+    primaryColor: '#E8F3F8', mainBkg: '#E8F3F8', nodeBorder: '#0A6190',
+    primaryBorderColor: '#0A6190', primaryTextColor: '#041823',
+    lineColor: '#5DB3BF', edgeLabelBackground: '#F5F7FA',
+    clusterBkg: '#F5F7FA', clusterBorder: '#5DB3BF'
+  }});
+</script>
+<style>
+:root {
+  --neo-blue:        #0A6190;
+  --neo-dark-blue:   #014063;
+  --neo-darkest:     #041823;
+  --neo-green:       #145439;
+  --neo-teal:        #5DB3BF;
+  --neo-cyan:        #8FE3E8;
+  --neo-light-green: #90CB62;
+  --neo-marigold:    #FFA901;
+  --neo-text:        #1B1B1B;
+  --neo-muted:       #525252;
+  --neo-off-white:   #FCF9F6;
+  --neo-surface:     #F5F7FA;
+  --neo-border:      #E6E9EE;
+}
+
+@page {
+  size: A4;
+  margin: 25mm 22mm 30mm 22mm;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--neo-text);
+  line-height: 1.7;
+  font-size: 10.5pt;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 20mm 22mm;
+  background: white;
+}
+
+/* Cover page */
+.cover {
+  text-align: center;
+  padding: 60px 0 40px;
+  page-break-after: always;
+}
+
+.cover img.logo {
+  width: 60px;
+  margin-bottom: 30px;
+}
+
+.cover h1 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 26pt;
+  color: var(--neo-blue);
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.cover .subtitle {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 13pt;
+  color: var(--neo-dark-blue);
+  margin-bottom: 24px;
+}
+
+.cover .author {
+  font-size: 11pt;
+  color: var(--neo-muted);
+  margin-bottom: 6px;
+}
+
+.cover .date {
+  font-size: 10pt;
+  color: var(--neo-muted);
+  margin-bottom: 30px;
+}
+
+.cover .abstract {
+  text-align: left;
+  border-left: 4px solid var(--neo-teal);
+  background: var(--neo-surface);
+  padding: 16px 20px;
+  margin: 0 20px;
+  border-radius: 0 6px 6px 0;
+  font-size: 10pt;
+  color: var(--neo-muted);
+  line-height: 1.6;
+}
+
+.accent-bar {
+  height: 4px;
+  background: linear-gradient(90deg, var(--neo-blue), var(--neo-teal), var(--neo-cyan));
+  margin-bottom: 30px;
+  border-radius: 2px;
+}
+
+/* Headings */
+h2 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15pt;
+  color: var(--neo-blue);
+  border-bottom: 3px solid var(--neo-teal);
+  padding-bottom: 6px;
+  margin-top: 32px;
+  margin-bottom: 16px;
+}
+
+h3 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 12pt;
+  color: var(--neo-dark-blue);
+  margin-top: 24px;
+  margin-bottom: 10px;
+}
+
+h4 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 10.5pt;
+  color: var(--neo-dark-blue);
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+
+.section-num {
+  color: var(--neo-teal);
+}
+
+/* Body text */
+p {
+  margin-bottom: 12px;
+  color: var(--neo-muted);
+}
+
+strong {
+  color: var(--neo-blue);
+  font-weight: 600;
+}
+
+em { color: var(--neo-muted); }
+
+a {
+  color: var(--neo-blue);
+  text-decoration: none;
+  border-bottom: 1px solid var(--neo-teal);
+}
+a:hover { color: var(--neo-dark-blue); }
+
+/* Lists */
+ul, ol {
+  margin: 0 0 14px 24px;
+  color: var(--neo-muted);
+}
+li { margin-bottom: 5px; }
+li::marker { color: var(--neo-teal); }
+
+/* Code */
+code {
+  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  font-size: 0.88em;
+  background: #EEF1F5;
+  color: var(--neo-dark-blue);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+pre {
+  background: var(--neo-darkest);
+  border-left: 4px solid var(--neo-teal);
+  border-radius: 0 6px 6px 0;
+  padding: 14px 18px;
+  margin: 14px 0 18px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+
+pre code {
+  background: none;
+  color: var(--neo-off-white);
+  padding: 0;
+  font-size: 8.5pt;
+}
+
+pre code .kw { color: #8FE3E8; font-weight: 500; }
+pre code .ty { color: #90CB62; }
+pre code .st { color: #FFA901; }
+pre code .nb { color: #FFA901; }
+pre code .cm { color: #6F757E; font-style: italic; }
+pre code .bi { color: #5DB3BF; }
+pre code .op { color: #8FE3E8; }
+pre code .pr { color: #e2e3e5; }
+
+/* ASCII art blocks */
+pre.ascii {
+  background: var(--neo-surface);
+  border-left: 4px solid var(--neo-border);
+  color: var(--neo-text);
+  font-size: 8.5pt;
+  line-height: 1.4;
+}
+pre.ascii code {
+  color: var(--neo-text);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0 18px;
+  font-size: 9.5pt;
+}
+
+thead th {
+  background: var(--neo-blue);
+  color: white;
+  font-weight: 600;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+tbody td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--neo-border);
+  color: var(--neo-muted);
+}
+
+tbody tr:nth-child(even) { background: var(--neo-surface); }
+
+/* Blockquotes */
+blockquote {
+  border-left: 4px solid var(--neo-teal);
+  background: var(--neo-surface);
+  padding: 12px 16px;
+  margin: 14px 0 18px;
+  border-radius: 0 6px 6px 0;
+  font-size: 9.5pt;
+  color: var(--neo-muted);
+}
+
+blockquote p { margin-bottom: 6px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Result box */
+.result-box {
+  border: 2px solid var(--neo-light-green);
+  background: #f2f8ec;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 14px 0 18px;
+}
+
+.result-box .label {
+  font-weight: 700;
+  color: var(--neo-green);
+  font-size: 10pt;
+  margin-bottom: 6px;
+}
+
+/* Fact box */
+.fact-box {
+  border: 2px solid var(--neo-teal);
+  background: var(--neo-surface);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 14px 0 18px;
+}
+
+.fact-box .label {
+  font-weight: 700;
+  color: var(--neo-blue);
+  font-size: 10pt;
+  margin-bottom: 6px;
+}
+
+/* Figure caption */
+.figure-caption {
+  text-align: center;
+  font-size: 9pt;
+  color: var(--neo-muted);
+  font-style: italic;
+  margin: -8px 0 18px;
+}
+
+/* Mermaid diagrams */
+pre.mermaid {
+  background: transparent;
+  border-left: none;
+  padding: 10px 0;
+  text-align: center;
+}
+
+/* Page break utility */
+.page-break { page-break-before: always; }
+
+/* Footer */
+.footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 2px solid var(--neo-border);
+  text-align: center;
+  font-size: 8.5pt;
+  color: var(--neo-muted);
+}
+
+.footer img { width: 30px; vertical-align: middle; margin-right: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     COVER PAGE
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <img class="logo" src="assets/logo.png" alt="Neo4j">
+  <h1>Real-Time CPA at Scale</h1>
+  <div class="subtitle">Scoping, Node Splitting, and GDS</div>
+  <div class="author">Pierre Halftermeyer &middot; Field Engineer, Neo4j</div>
+  <div class="date">2025</div>
+  <div class="abstract">
+    <strong>Abstract.</strong> Critical Path Analysis (CPA) on process DAGs is a standard O(V+E) problem &mdash;
+    but on a large, dynamic production graph, the naive approach fails at two distinct points:
+    projecting the full graph is too slow, and enumerating ancestors via Cypher variable-length
+    paths is exponential. This article presents a three-step technique &mdash; scoped ancestor collection
+    via <code>apoc.path.subgraphNodes</code>, virtual node splitting at projection time, and
+    targeted GDS projection &mdash; that brings CPA from hours to milliseconds per scoping node.
+    All queries are production-ready Cypher, demonstrated on a toy dataset with full expected results.
+  </div>
+</div>
+
+<div class="accent-bar"></div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §1. INTRODUCTION
+     ═══════════════════════════════════════════════════════════════════ -->
+<h2><span class="section-num">&sect;1.</span> Introduction</h2>
+
+<p>Process orchestration systems &mdash; batch pipelines, financial clearing chains, manufacturing workflows &mdash;
+are naturally modelled as Directed Acyclic Graphs (DAGs). Tasks depend on other tasks; some can run in
+parallel, others must wait. At any point in the day, some tasks are already completed and some are still
+pending. The question that matters operationally is: <strong>given the current state of execution,
+what is the longest path still remaining?</strong> This is Critical Path Analysis (CPA), and the answer
+directly drives SLA prediction and incident response.</p>
+
+<p>Neo4j's Graph Data Science library provides <code>gds.dag.longestPath</code>, an efficient algorithm
+for exactly this problem &mdash; it runs in $O(V+E)$ using dynamic programming on the topological order
+of the DAG. A primer on DAGs and this algorithm is available in
+<a href="https://neo4j.com/blog/developer/dags-neo4j-critical-path-analysis/">Unlocking DAGs in Neo4j:
+From Basics to Critical Path Analysis</a>. This article focuses on a different challenge: making CPA
+work in production, on a graph that is both <strong>large</strong> and <strong>dynamic</strong>.</p>
+
+<p>Large means tens or hundreds of millions of edges. Dynamic means the graph changes continuously
+throughout the day &mdash; tasks complete, new instances are created, statuses update. These two
+properties together rule out the most natural approaches, each for a different reason.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §2. TWO DISTINCT PROBLEMS
+     ═══════════════════════════════════════════════════════════════════ -->
+<h2><span class="section-num">&sect;2.</span> Two Distinct Problems</h2>
+
+<p>For a given <strong>scoping node</strong> (a top-level task or service entry point), the CPA is the
+longest remaining path across all pending upstream tasks. There may be multiple scoping nodes in a
+live graph; the CPA is computed independently for each, on demand.</p>
+
+<h3><span class="section-num">2.1</span> Trap 1 &mdash; You cannot project the full graph at query time</h3>
+
+<p>GDS graphs live in memory. Projecting the full graph is $O(m)$ in the number of edges &mdash;
+linear, not exponential. On a small graph, that's fine. On a 100M-edge production graph, that
+projection takes tens of seconds.</p>
+
+<p>The critical point is that <strong>you cannot cache it</strong>. The graph is a living object: task
+completions arrive continuously throughout the day, and the frontier between done and not-done shifts
+with every update. A projection taken at 9:00 is stale by 9:01. You must project fresh at query
+time &mdash; and $O(m)$ at query time means no sub-second response.</p>
+
+<div class="fact-box">
+  <div class="label">The fix</div>
+  <p>Scope the projection to $T_{\text{sub}}$ &mdash; the subgraph of ancestors of the scoping node.
+  In a large process graph, any individual scoping node's ancestor set is typically orders of magnitude
+  smaller than the full graph. Projecting $T_{\text{sub}}$ instead of the full graph brings the cost
+  down to something compatible with real-time querying.</p>
+</div>
+
+<h3><span class="section-num">2.2</span> Trap 2 &mdash; You cannot enumerate ancestors with Cypher variable-length paths</h3>
+
+<p>The natural way to collect ancestor nodes is a variable-length Cypher pattern:
+<code>(scopingNode)&lt;-[:PRECEDES]-*(n)</code>. But Cypher has two match modes, and neither gives you
+what you need here:</p>
+
+<ul>
+  <li><strong><code>DIFFERENT RELATIONSHIPS</code></strong> (Cypher default) &mdash; a relationship can
+  only be traversed once <em>within a given path match</em>, but the same node can be reached via
+  multiple distinct paths, each returned as a separate result row.</li>
+  <li><strong><code>REPEATABLE ELEMENTS</code></strong> (GQL default) &mdash; relaxes even that
+  constraint, allowing relationships to be traversed multiple times within a single path.</li>
+</ul>
+
+<p>The critical point is that <strong>both modes are path-level constraints</strong> &mdash; they govern
+what is allowed within a single path, independently for each match. Neither mode has any awareness of
+the set of paths returned as a whole. There is no mechanism to say &ldquo;if this node was already
+returned via another path, skip it&rdquo;.</p>
+
+<p>On a diamond, T_D is reached via T_B&rarr;T_D and via T_C&rarr;T_D &mdash; two distinct paths, two
+result rows, two independent matches. Each is valid under either mode. The result set accumulates all
+of them.</p>
+
+<pre class="mermaid">
+graph TD
+    Top["&bull;"] --> L1a["&bull;"]
+    Top --> L1b["&bull;"]
+    L1a --> L2a["&bull;"]
+    L1a --> L2b["&bull;"]
+    L1b --> L2c["&bull;"]
+    L1b --> L2d["&bull;"]
+    L2a --> Bot1["&bull;"]
+    L2b --> Bot1
+    L2c --> Bot2["&bull;"]
+    L2d --> Bot2
+    Bot1 --> Sink["&bull;"]
+    Bot2 --> Sink
+</pre>
+<div class="figure-caption">Figure 1 &mdash; Multi-level diamond: m parallel branches at each level, d levels deep &rarr; m<sup>d</sup> paths.</div>
+
+<p>With $m$ parallel branches at each level and $d$ levels, there are $m^d$ <strong>paths</strong> to
+enumerate. This is exponential in depth. In the production environment this technique was built for,
+the naive Cypher traversal ran for several hours on a test graph &mdash; and was simply not executable
+in production.</p>
+
+<p><strong>Depth is not the issue. Fan-out is.</strong></p>
+
+<div class="fact-box">
+  <div class="label">The fix</div>
+  <p>Use <strong><code>NODE_GLOBAL</code> uniqueness</strong> &mdash; once a node has been visited, it is
+  never revisited, regardless of which branch led there. This collapses the traversal from exponential
+  in paths to linear in nodes and edges: $O(V_{\text{sub}} + E_{\text{sub}})$. It is the classic BFS/DFS
+  guarantee, and it is what <code>apoc.path.subgraphNodes</code> provides. This makes
+  <code>apoc.path</code> the right tool here &mdash; it provides <code>NODE_GLOBAL</code> traversal
+  directly in Cypher, without requiring a separate GDS projection step just to collect the ancestor set.</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §3. THE SOLUTION IN THREE STEPS
+     ═══════════════════════════════════════════════════════════════════ -->
+<h2><span class="section-num">&sect;3.</span> The Solution in Three Steps</h2>
+
+<p>With both traps identified, the solution follows directly. We need to: collect ancestors efficiently
+(Step 1), encode node durations as edge weights so GDS can process them (Step 2), and project only the
+relevant subgraph into GDS (Step 3). Steps 1 and 3 are combined in a single query.</p>
+
+
+<h3><span class="section-num">3.0</span> Toy Dataset</h3>
+
+<p>Two chained diamonds, a sibling, a cousin branch, and an unrelated branch. The diamonds illustrate
+fan-out (Trap 2). The sibling, cousin, and unrelated branch illustrate the three categories of nodes
+that scoping cuts away &mdash; including nodes within the same WCC as the scoping node (Trap 1).</p>
+
+<pre><code><span class="cm">// ── Create toy graph ──────────────────────────────────────────────</span>
+<span class="kw">CREATE</span>
+  <span class="cm">// Main process chain</span>
+  (tA<span class="ty">:Task:Done</span> {uid: <span class="nb">1</span>,  name: <span class="st">"T_A"</span>, duration: <span class="nb">2.0</span>}),
+  (tB<span class="ty">:Task</span>      {uid: <span class="nb">2</span>,  name: <span class="st">"T_B"</span>, duration: <span class="nb">1.0</span>}),
+  (tC<span class="ty">:Task</span>      {uid: <span class="nb">3</span>,  name: <span class="st">"T_C"</span>, duration: <span class="nb">3.0</span>}),  <span class="cm">// &larr; first bottleneck</span>
+  (tD<span class="ty">:Task</span>      {uid: <span class="nb">4</span>,  name: <span class="st">"T_D"</span>, duration: <span class="nb">1.0</span>}),
+  (tE<span class="ty">:Task</span>      {uid: <span class="nb">5</span>,  name: <span class="st">"T_E"</span>, duration: <span class="nb">0.5</span>}),
+  (tF<span class="ty">:Task</span>      {uid: <span class="nb">6</span>,  name: <span class="st">"T_F"</span>, duration: <span class="nb">2.0</span>}),  <span class="cm">// &larr; second bottleneck</span>
+  (tG<span class="ty">:Task</span>      {uid: <span class="nb">7</span>,  name: <span class="st">"T_G"</span>, duration: <span class="nb">0.5</span>}),  <span class="cm">// &larr; scoping node</span>
+
+  <span class="cm">// Diamond 1: T_A fans out to T_B and T_C, converges on T_D</span>
+  (tA)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tB),
+  (tA)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tC),
+  (tB)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tD),
+  (tC)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tD),
+
+  <span class="cm">// Diamond 2: T_D fans out to T_E and T_F, converges on T_G</span>
+  (tD)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tE),
+  (tD)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tF),
+  (tE)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tG),
+  (tF)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tG),
+
+  <span class="cm">// Sibling: T_F also precedes T_H</span>
+  (tH<span class="ty">:Task</span> {uid: <span class="nb">8</span>,  name: <span class="st">"T_H"</span>, duration: <span class="nb">1.5</span>}),
+  (tF)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tH),
+
+  <span class="cm">// Cousin branch: T_D &rarr; T_I &rarr; T_J</span>
+  (tI<span class="ty">:Task</span> {uid: <span class="nb">9</span>,  name: <span class="st">"T_I"</span>, duration: <span class="nb">1.0</span>}),
+  (tJ<span class="ty">:Task</span> {uid: <span class="nb">10</span>, name: <span class="st">"T_J"</span>, duration: <span class="nb">0.5</span>}),
+  (tD)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tI),
+  (tI)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tJ),
+
+  <span class="cm">// Unrelated branch &mdash; separate WCC</span>
+  (tX<span class="ty">:Task</span> {uid: <span class="nb">11</span>, name: <span class="st">"T_X"</span>, duration: <span class="nb">1.0</span>}),
+  (tY<span class="ty">:Task</span> {uid: <span class="nb">12</span>, name: <span class="st">"T_Y"</span>, duration: <span class="nb">1.0</span>}),
+  (tX)<span class="op">-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-&gt;</span>(tY)</code></pre>
+
+<pre class="mermaid">
+graph LR
+    tA["T_A:Done<br/>2h"] --> tB["T_B<br/>1h"]
+    tA --> tC["T_C<br/>3h"]
+    tB --> tD["T_D<br/>1h"]
+    tC --> tD
+    tD --> tE["T_E<br/>0.5h"]
+    tD --> tF["T_F<br/>2h"]
+    tD --> tI["T_I<br/>1h"]
+    tE --> tG["T_G<br/>0.5h"]
+    tF --> tG
+    tF --> tH["T_H<br/>1.5h"]
+    tI --> tJ["T_J<br/>0.5h"]
+    tX["T_X<br/>1h"] --> tY["T_Y<br/>1h"]
+
+    style tA fill:#90CB62,stroke:#145439,color:#041823
+    style tG fill:#FFA901,stroke:#C07A00,color:#041823
+    style tH fill:#E6E9EE,stroke:#525252,color:#525252
+    style tI fill:#E6E9EE,stroke:#525252,color:#525252
+    style tJ fill:#E6E9EE,stroke:#525252,color:#525252
+    style tX fill:#E6E9EE,stroke:#525252,color:#525252
+    style tY fill:#E6E9EE,stroke:#525252,color:#525252
+</pre>
+<div class="figure-caption">Figure 2 &mdash; Toy dataset. Green: completed (Done). Gold: scoping node (T_G). Gray: excluded by scoping.</div>
+
+<p><code>apoc.path.subgraphNodes</code> from T_G collects exactly: T_G, T_F, T_E, T_D, T_C, T_B,
+T_A &mdash; and excludes T_H (sibling), T_I and T_J (cousin branch), and T_X and T_Y (separate WCC).
+T_H and T_I/T_J are in the same WCC as T_G but are not ancestors of it &mdash; this is the case a
+full-graph projection would include unnecessarily.</p>
+
+<p>With a naive Cypher <code>*</code> traversal from T_G, there are $2^2 = 4$ <strong>paths</strong>
+to enumerate (T_D is visited twice, once per diamond level). <code>apoc.path.subgraphNodes</code> with
+<code>NODE_GLOBAL</code> visits each node exactly once.</p>
+
+<div class="result-box">
+  <div class="label">Expected CPA (skipping T_A)</div>
+  <p><strong>T_C (3h) + T_D (1h) + T_F (2h) + T_G (0.5h) = 6.5h</strong></p>
+</div>
+
+
+<h3><span class="section-num">3.1</span> Step 1 &mdash; Scope to the Ancestor Subgraph</h3>
+
+<p>The first query establishes $T_{\text{sub}}$: all ancestors of the scoping node, collected in a single
+graph walk. This is a standalone step here for clarity &mdash; in practice it is folded directly into
+the projection query in Step 3.</p>
+
+<pre><code><span class="cm">// ── Scope: collect ancestors of the scoping node ─────────────────</span>
+<span class="kw">MATCH</span> (scopingNode<span class="ty">:Task</span> {name: <span class="st">"T_G"</span>})
+<span class="kw">CALL</span> <span class="bi">apoc.path.subgraphNodes</span>(scopingNode, {
+  relationshipFilter: <span class="st">"&lt;PRECEDES"</span>,
+  minLevel: <span class="nb">0</span>
+})
+<span class="kw">YIELD</span> node <span class="kw">AS</span> n
+<span class="kw">RETURN</span> n.name <span class="kw">AS</span> ancestor</code></pre>
+
+<blockquote>
+  <p><strong>Why <code>subgraphNodes</code> and not <code>spanningTree</code>?</strong> A spanning tree
+  drops edges by definition &mdash; it discovers nodes by cutting the graph into a tree structure.
+  <code>subgraphNodes</code> collects nodes without making any claim about edges between them.
+  Since we need all edges for the GDS projection, <code>subgraphNodes</code> is semantically correct here.</p>
+</blockquote>
+
+
+<h3><span class="section-num">3.2</span> Step 2 &mdash; Node Splitting: Encoding Node Weights as Edge Weights</h3>
+
+<p><code>gds.dag.longestPath</code> operates on <strong>edge weights</strong>. But our durations
+live on <strong>nodes</strong>. Before projecting, we need a way to encode node weights as edge
+weights without losing any information.</p>
+
+<p>One alternative would be to design the data model around the algorithm &mdash; for instance,
+representing each task as a pair of <code>(:TimeBoundary)</code> nodes connected by a <code>[:TASK]</code>
+relationship carrying the duration. That model is native to GDS, but it is unnatural for transactional
+workloads: creating, updating, and querying tasks as node pairs is awkward, and the model leaks
+algorithmic concerns into the application layer.</p>
+
+<p>The approach here makes the opposite bet: <strong>keep the natural model</strong> (duration as a node
+property, task as a single node), and perform the transformation at query time during the GDS
+projection. The data model stays clean for the application; the node-splitting lives entirely in the
+projection query, invisible to everything else.</p>
+
+<p>The technique: replace each node <code>n</code> with two virtual integer IDs &mdash; an entry point
+and an exit point &mdash; connected by a weighted edge carrying the node's duration. Connectivity
+between original nodes becomes zero-weight edges between virtual IDs.</p>
+
+<pre class="mermaid">
+graph LR
+    subgraph "Original node n (uid = k)"
+        N["n"]
+    end
+    subgraph "Virtual split"
+        NIN["n_in = 2k"] -->|"w = duration(n)"| NOUT["n_out = 2k+1"]
+    end
+    subgraph "Connectivity"
+        UPOUT["upstream_out"] -->|"w = 0"| NIN2["n_in"]
+    end
+</pre>
+<div class="figure-caption">Figure 3 &mdash; Node splitting: each real node becomes two virtual IDs connected by a duration edge.</div>
+
+<blockquote>
+  <p><strong>Why a dedicated <code>uid</code> integer property?</strong> GDS projection expects
+  <code>NODE | INTEGER</code> types for source and target columns. <code>id()</code> was the natural
+  fit but is deprecated. Its replacement, <code>elementId()</code>, returns a string &mdash; unusable
+  here. A <code>uid</code> integer property on each node is the correct modern approach.</p>
+</blockquote>
+
+<p>The longest path through this virtual graph equals the sum of durations along the original
+node path. Mapping back is straightforward: <code>MATCH (n:Task {uid: virtualId / 2})</code>.</p>
+
+
+<h3><span class="section-num">3.3</span> Step 3 &mdash; Project the Scoped Subgraph Into GDS</h3>
+
+<p>This is the core query. It combines the ancestor scoping from Step 1, filters out completed tasks,
+applies node splitting from Step 2, and projects the result into GDS &mdash; all in a single pass.
+Because it projects only $T_{\text{sub}}$ rather than the full graph, it stays fast even on a large,
+continuously-changing graph.</p>
+
+<pre><code><span class="cm">// ── Project filtered ancestor subgraph into GDS ──────────────────</span>
+<span class="kw">MATCH</span> (scopingNode<span class="ty">:Task</span> {name: <span class="st">"T_G"</span>})
+
+<span class="cm">// 1. Collect ancestor nodes</span>
+<span class="kw">CALL</span> <span class="bi">apoc.path.subgraphNodes</span>(scopingNode, {
+  relationshipFilter: <span class="st">"&lt;PRECEDES"</span>,
+  minLevel: <span class="nb">0</span>
+})
+<span class="kw">YIELD</span> node <span class="kw">AS</span> n
+
+<span class="cm">// 2. Filter out completed tasks</span>
+<span class="kw">FILTER</span> <span class="kw">NOT</span> n<span class="ty">:Done</span>
+
+<span class="cm">// 3. Find edges &mdash; OPTIONAL MATCH ensures frontier nodes still appear</span>
+<span class="cm">//    even when all their upstreams are Done</span>
+<span class="kw">OPTIONAL MATCH</span> (n)<span class="op">&lt;-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-</span>(upstream<span class="ty">:!Done</span>)
+
+<span class="cm">// 4. Node splitting</span>
+<span class="kw">WITH</span>
+  n, upstream,
+  <span class="nb">2</span> <span class="op">*</span> n.uid              <span class="kw">AS</span> n_in,
+  <span class="nb">2</span> <span class="op">*</span> n.uid <span class="op">+</span> <span class="nb">1</span>          <span class="kw">AS</span> n_out,
+  <span class="nb">2</span> <span class="op">*</span> upstream.uid <span class="op">+</span> <span class="nb">1</span>   <span class="kw">AS</span> upstream_out,
+  n.duration             <span class="kw">AS</span> weight
+
+<span class="cm">// 5. Emit both virtual edge types</span>
+<span class="kw">CALL</span> (<span class="op">*</span>) {
+  <span class="kw">RETURN</span> n_in  <span class="kw">AS</span> source, n_out <span class="kw">AS</span> target, weight <span class="kw">AS</span> w
+  <span class="kw">UNION</span>
+  <span class="kw">WITH</span> upstream_out <span class="kw">WHERE</span> upstream_out <span class="kw">IS NOT</span> <span class="nb">NULL</span>
+  <span class="kw">RETURN</span> upstream_out <span class="kw">AS</span> source, n_in <span class="kw">AS</span> target, <span class="nb">0.0</span> <span class="kw">AS</span> w
+}
+<span class="kw">WITH</span> <span class="kw">DISTINCT</span> source, target, w
+
+<span class="cm">// 6. Project into GDS (reversed: scoping node becomes source)</span>
+<span class="kw">WITH</span> <span class="bi">gds.graph.project</span>(
+  <span class="st">'cpa_graph'</span>,
+  target,
+  source,
+  { relationshipProperties: { duration: w } }
+) <span class="kw">AS</span> g
+<span class="kw">RETURN</span> g.graphName <span class="kw">AS</span> graph, g.nodeCount <span class="kw">AS</span> nodes, g.relationshipCount <span class="kw">AS</span> rels</code></pre>
+
+<blockquote>
+  <p><strong>Why the graph is projected in reverse.</strong> <code>gds.dag.longestPath</code> yields
+  <code>(sourceNode, targetNode, totalCost)</code> where <code>sourceNode</code> is always a
+  <strong>source</strong> in the GDS graph &mdash; a node with no incoming edges. In the original graph
+  direction, the scoping node (T_G) is a sink, and the frontier tasks (T_C, T_B) are the sources.
+  The algorithm would yield <code>sourceNode=T_C, targetNode=T_G</code> &mdash; correct cost, but
+  no way to filter &ldquo;only paths that reach my scoping node&rdquo; without re-examining the full
+  path. By projecting the graph in reverse, the scoping node becomes the source and frontier tasks
+  become sinks. The algorithm now yields <code>sourceNode=T_G, targetNode=T_C</code>, and the
+  <code>FILTER source.name = "T_G"</code> is direct and unambiguous. The reversal is not cosmetic &mdash;
+  it is what makes the result filterable.</p>
+</blockquote>
+
+
+<div class="page-break"></div>
+
+<h3><span class="section-num">3.4</span> Step 4 &mdash; Run <code>dag.longestPath</code></h3>
+
+<p>With the scoped, node-split graph in memory, the CPA is a single GDS call. The algorithm runs in
+$O(V_{\text{sub}} + E_{\text{sub}})$ using dynamic programming on the topological order &mdash;
+the polynomial guarantee that makes everything above worthwhile.</p>
+
+<p>Two post-processing details to handle: <code>dag.longestPath</code> yields a row per reachable node
+(not just sinks), and <code>nodeIds</code> contains both virtual IDs for each real node. Both are
+resolved with the <code>FILTER</code> below.</p>
+
+<pre><code><span class="cm">// ── Compute CPA &mdash; longest path per frontier node ─────────────────</span>
+<span class="kw">CALL</span> <span class="bi">gds.dag.longestPath.stream</span>(<span class="st">'cpa_graph'</span>, {
+  relationshipWeightProperty: <span class="st">"duration"</span>
+})
+<span class="kw">YIELD</span> sourceNode, targetNode, totalCost, nodeIds
+
+<span class="cm">// Map virtual IDs back to real nodes via uid property</span>
+<span class="kw">MATCH</span> (source<span class="ty">:Task</span> {uid: sourceNode <span class="op">/</span> <span class="nb">2</span>})
+<span class="kw">MATCH</span> (frontier<span class="ty">:Task</span> {uid: targetNode <span class="op">/</span> <span class="nb">2</span>})
+<span class="kw">WITH</span>
+  targetNode,
+  source, frontier, totalCost,
+  [id <span class="kw">IN</span> nodeIds <span class="kw">WHERE</span> id <span class="op">%</span> <span class="nb">2</span> <span class="op">=</span> <span class="nb">0</span> |
+    <span class="bi">head</span>(<span class="kw">collect</span> { <span class="kw">MATCH</span> (n<span class="ty">:Task</span> {uid: id <span class="op">/</span> <span class="nb">2</span>}) <span class="kw">RETURN</span> n.name })
+  ] <span class="kw">AS</span> path
+
+<span class="cm">// Keep only even targetNodes (n_in) to count full duration of frontier node</span>
+<span class="kw">FILTER</span> targetNode <span class="op">%</span> <span class="nb">2</span> <span class="op">=</span> <span class="nb">0</span>
+<span class="kw">AND</span> source.name <span class="op">=</span> <span class="st">"T_G"</span>
+<span class="kw">AND</span> <span class="kw">NOT EXISTS</span> { (frontier)<span class="op">&lt;-</span>[<span class="ty">:PRECEDES</span>]<span class="op">-</span>(upstream<span class="ty">:!Done</span>) }
+
+<span class="kw">RETURN</span>
+  source.name    <span class="kw">AS</span> scopingNode,
+  frontier.name  <span class="kw">AS</span> criticalFrontier,
+  totalCost      <span class="kw">AS</span> criticalPathDuration,
+  path           <span class="kw">AS</span> criticalPath
+<span class="kw">ORDER BY</span> totalCost <span class="kw">DESC</span></code></pre>
+
+<div class="result-box">
+  <div class="label">Result</div>
+  <table>
+    <thead>
+      <tr><th>scopingNode</th><th>criticalFrontier</th><th>criticalPathDuration</th><th>criticalPath</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>T_G</td><td>T_C</td><td>6.5</td><td>[T_G, T_F, T_D, T_C]</td></tr>
+      <tr><td>T_G</td><td>T_B</td><td>4.5</td><td>[T_G, T_F, T_D, T_B]</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<h3><span class="section-num">3.5</span> Step 5 &mdash; Clean Up</h3>
+
+<pre><code><span class="kw">CALL</span> <span class="bi">gds.graph.drop</span>(<span class="st">'cpa_graph'</span>)</code></pre>
+
+<p>The in-memory projection must be dropped after each query &mdash; this is not optional cleanup, it is
+part of the contract. Since the graph is dynamic, the next query for the same scoping node will need a
+fresh projection. In production, wrap Steps 3&ndash;5 in an APOC procedure so the drop is guaranteed
+even on failure.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §4. COMPLEXITY SUMMARY
+     ═══════════════════════════════════════════════════════════════════ -->
+<h2><span class="section-num">&sect;4.</span> Why It Works: Complexity Summary</h2>
+
+<table>
+  <thead>
+    <tr><th>Problem</th><th>Naive approach</th><th>Cost</th><th>Fix</th><th>Cost</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Collect ancestor nodes</td>
+      <td>Cypher <code>*</code> with relationship uniqueness</td>
+      <td>$O(m^d)$ &mdash; exponential</td>
+      <td><code>apoc.path.subgraphNodes</code> with <code>NODE_GLOBAL</code></td>
+      <td>$O(V_{\text{sub}} + E_{\text{sub}})$</td>
+    </tr>
+    <tr>
+      <td>Project graph into GDS</td>
+      <td>Project full graph each time</td>
+      <td>$O(m)$ &mdash; too slow at 100M edges</td>
+      <td>Project $T_{\text{sub}}$ only</td>
+      <td>$O(V_{\text{sub}} + E_{\text{sub}})$</td>
+    </tr>
+    <tr>
+      <td>Find longest path</td>
+      <td>&mdash;</td>
+      <td>&mdash;</td>
+      <td><code>gds.dag.longestPath</code> on $T_{\text{sub}}$</td>
+      <td>$O(V_{\text{sub}} + E_{\text{sub}})$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Node splitting doubles the virtual node count &mdash; a constant factor, not a change in complexity
+class.</p>
+
+<p>In the production environment where this was developed, this combination brought query time from
+several hours on a test graph &mdash; completely infeasible in production &mdash; down to
+<strong>milliseconds per scoping node</strong>.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §5. GOING FURTHER
+     ═══════════════════════════════════════════════════════════════════ -->
+<h2><span class="section-num">&sect;5.</span> Going Further: Real Process Monitoring Graph</h2>
+
+<p>The toy dataset above uses a single <code>Task</code> label and <code>[:PRECEDES]</code> for
+simplicity. In a real process monitoring context, the graph is richer:</p>
+
+<ul>
+  <li><strong>Multiple node labels</strong>: <code>Task</code>, <code>Dependency</code>,
+  <code>SubService</code>, <code>Service</code>, <code>Metric</code></li>
+  <li><strong>Multiple relationship types</strong>: <code>GENERATES</code>, <code>ENABLES</code>,
+  <code>FEEDS</code>, <code>BELONGS_TO</code></li>
+  <li><strong>Completion state via instances</strong>: a <code>TaskInstance</code> node with
+  <code>statusCode = "COMPLETED"</code> linked via <code>IS_INSTANCE_OF</code> &mdash; the
+  <code>:Done</code> label used in the toy dataset becomes a richer pattern in production</li>
+  <li><strong>A <code>SubService</code> node as the scoping anchor</strong>, carrying the SLE
+  (Service Level Expectation)</li>
+</ul>
+
+<pre class="mermaid">
+graph TD
+    S["Service"] --> SS1["SubService<br/>(SLE anchor)"]
+    S --> SS2["SubService"]
+    SS1 --> M1["Metric"]
+    SS1 --> M2["Metric"]
+    M1 --> D1["Dependency"]
+    M1 --> D2["Dependency"]
+    D1 --> T1["Task"]
+    D2 --> T2["Task"]
+    T1 --> TI1["TaskInstance<br/>COMPLETED"]
+    T2 --> TI2["TaskInstance<br/>RUNNING"]
+
+    style S fill:#FFA901,stroke:#C07A00,color:#041823
+    style SS1 fill:#E8F3F8,stroke:#0A6190,color:#041823
+    style SS2 fill:#E6E9EE,stroke:#525252,color:#525252
+    style TI1 fill:#90CB62,stroke:#145439,color:#041823
+    style TI2 fill:#8FE3E8,stroke:#0A6190,color:#041823
+</pre>
+<div class="figure-caption">Figure 4 &mdash; Production data model: Service &rarr; SubService &rarr; Metric &rarr; Dependency &rarr; Task &rarr; TaskInstance.</div>
+
+<p>The <code>NOT EXISTS</code> filter for completion becomes slightly more involved for
+<code>Dependency</code> nodes (which are considered done when the <code>Task</code> that generates
+them is completed), but the three techniques &mdash; scoping, node splitting, GDS projection &mdash;
+apply identically.</p>
+
+<p>The full production implementation &mdash; including SLE prediction
+(<code>PREDICTED_LATE</code> / <code>ON_TRACK</code> / <code>BLOCKED</code>), stall detection, and
+a visualization layer &mdash; is available in the companion repository:
+<a href="https://github.com/halftermeyer/risk-process-monitoring-demo">halftermeyer/risk-process-monitoring-demo</a>.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §6. BACKGROUND
+     ═══════════════════════════════════════════════════════════════════ -->
+<h2><span class="section-num">&sect;6.</span> Background</h2>
+
+<p>This approach builds on the foundations described in
+<a href="https://neo4j.com/blog/developer/dags-neo4j-critical-path-analysis/">Unlocking DAGs in Neo4j:
+From Basics to Critical Path Analysis</a>, which introduces the <code>gds.dag.longestPath</code>
+algorithm and demonstrates CPA on Gantt charts with physical node splitting. The present work replaces
+physical node splitting (creating actual <code>:Start</code>/<code>:End</code> nodes in the database) with
+<strong>virtual node splitting at projection time</strong>, keeping the data model clean and enabling
+real-time, scoped CPA on large dynamic graphs.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="footer">
+  <img src="assets/logo.png" alt="Neo4j">
+  <a href="https://neo4j.com">neo4j.com</a> &middot; 2025
+</div>
+
+</body>
+</html>
