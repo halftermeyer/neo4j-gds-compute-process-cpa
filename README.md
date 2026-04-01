@@ -2,6 +2,18 @@
 
 > Critical Path Analysis of process DAGs using Neo4j Graph Data Science, with scoped projection and virtual node splitting for real-time performance on large, dynamic graphs.
 
+## Try It Now
+
+```bash
+git clone https://github.com/halftermeyer/neo4j-gds-compute-process-cpa.git
+cd neo4j-gds-compute-process-cpa
+docker compose up
+```
+
+Then open **http://localhost:8000** and connect to your Neo4j instance (needs GDS + APOC plugins).
+
+The app auto-loads a 60-task risk computation pipeline. Click any node to compute critical paths.
+
 ## Overview
 
 Process orchestration systems -- batch pipelines, financial clearing chains, manufacturing workflows -- are naturally modelled as Directed Acyclic Graphs (DAGs). Tasks depend on other tasks; some can run in parallel, others must wait. At any point in the day, some tasks are already completed and some are still pending. The question that matters operationally is: **given the current state of execution, what is the longest path still remaining?** This is Critical Path Analysis (CPA), and the answer directly drives SLA prediction and incident response.
@@ -21,13 +33,22 @@ Large means tens or hundreds of millions of edges. Dynamic means the graph chang
 ```
 .
 ├── README.md                          # This document
+├── docker-compose.yml                 # One-command launch (Neo4j + app)
+├── app/
+│   ├── Dockerfile                     # App container
+│   ├── main.py                        # FastAPI backend
+│   ├── static/index.html              # Interactive explorer (cytoscape.js)
+│   ├── generate_dataset.cypher        # 60-task risk pipeline
+│   ├── generate_large_dataset.py      # Procedural large DAG generator
+│   └── requirements.txt
 ├── cypher/
 │   ├── 00_create_toy_dataset.cypher   # Toy graph creation
 │   ├── 01_scope_ancestors.cypher      # Step 1: ancestor scoping
 │   ├── 02_project_subgraph.cypher     # Steps 2-3: node splitting + GDS projection
 │   ├── 03_compute_cpa.cypher          # Step 4: run dag.longestPath
 │   └── 04_cleanup.cypher              # Step 5: drop projection
-└── queries.csv                        # Neo4j Query Workbench export (all queries)
+├── doc/                               # Neo4j-branded PDF article
+└── queries.csv                        # Neo4j Query Workbench export
 ```
 
 ## Quick Start
