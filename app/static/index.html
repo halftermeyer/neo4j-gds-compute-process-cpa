@@ -799,11 +799,19 @@ function highlightAllPaths() {
 }
 
 async function toggleDone(uid, markDone) {
-  showLoading(markDone ? 'Marking done...' : 'Marking undone...');
   const endpoint = markDone ? `/api/complete/${uid}` : `/api/uncomplete/${uid}`;
   await fetch(endpoint, { method: 'POST' });
-  await loadGraph();
-  hideLoading();
+  // Refresh done states without re-running layout
+  const resp = await fetch('/api/graph');
+  graphData = await resp.json();
+  const doneSet = new Set(graphData.nodes.filter(n => n.done).map(n => String(n.uid)));
+  cy.nodes().forEach(n => {
+    if (doneSet.has(n.id())) {
+      n.data('done', true);
+    } else {
+      n.removeData('done');
+    }
+  });
   clearSelection();
 }
 
