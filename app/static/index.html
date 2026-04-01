@@ -816,10 +816,11 @@ async function toggleDone(uid, markDone) {
 }
 
 async function resetDataset() {
-  if (!confirm('This will reset the database to the 60-task dataset. Continue?')) return;
-  showLoading('Resetting dataset...');
-  await fetch('/api/reset', { method: 'POST' });
-  await loadGraph();
+  showLoading('Resetting to 60-task dataset...');
+  try {
+    await fetch('/api/reset', { method: 'POST' });
+    await loadGraph();
+  } catch (e) { alert('Error: ' + e.message); }
   hideLoading();
   clearSelection();
 }
@@ -833,13 +834,14 @@ async function resetLargeDataset() {
   const density = parseFloat(parts[2]) || 0.5;
   const seed = parseInt(parts[3]) || 42;
   showLoading(`Generating ${layers} layers x ~${width} width, density=${density}...`);
-  const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&density=${density}&seed=${seed}&done=0.3`, { method: 'POST' });
-  const result = await resp.json();
-  showLoading(`Loading ${result.nodes} nodes, ${result.edges} edges...`);
-  await loadGraph();
-  hideLoading();
-  clearSelection();
-  alert(`Loaded: ${result.nodes} nodes, ${result.edges} edges, ${result.done} done`);
+  try {
+    const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&density=${density}&seed=${seed}&done=0.3`, { method: 'POST' });
+    const result = await resp.json();
+    showLoading(`Loading ${result.nodes} nodes, ${result.edges} edges...`);
+    await loadGraph();
+    hideLoading();
+    clearSelection();
+  } catch (e) { hideLoading(); alert('Error: ' + e.message); }
 }
 
 // Events
