@@ -1079,6 +1079,9 @@ function toggleTheme() {
 (async () => {
   const resp = await fetch('/api/status');
   const data = await resp.json();
+  if (data.docker) {
+    document.getElementById('conn-uri').value = 'bolt://host.docker.internal:7687';
+  }
   if (data.connected) {
     document.getElementById('connect-overlay').classList.add('hidden');
     loadTaskIndex();

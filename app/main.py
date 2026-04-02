@@ -73,9 +73,10 @@ def connect(req: ConnectRequest):
 @app.get("/api/status")
 def status():
     """Check if connected."""
+    is_docker = os.getenv("DOCKER_CONTAINER") == "1"
     if _state["driver"]:
-        return {"connected": True, "uri": _state["uri"], "user": _state["user"]}
-    return {"connected": False}
+        return {"connected": True, "uri": _state["uri"], "user": _state["user"], "docker": is_docker}
+    return {"connected": False, "docker": is_docker}
 
 
 @app.get("/api/tasks")
