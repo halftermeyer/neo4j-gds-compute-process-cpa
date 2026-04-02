@@ -348,10 +348,13 @@
 
 <!-- Context menu -->
 <div class="ctx-menu" id="ctx-menu">
-  <div class="ctx-menu-item" id="ctx-upstream" onclick="ctxExpandUpstream()">Expand Upstream</div>
-  <div class="ctx-menu-item" id="ctx-downstream" onclick="ctxExpandDownstream()">Expand Downstream</div>
+  <div class="ctx-menu-item" onclick="ctxExpandUpstream()">Expand Upstream</div>
+  <div class="ctx-menu-item" onclick="ctxExpandDownstream()">Expand Downstream</div>
   <div class="ctx-menu-sep"></div>
-  <div class="ctx-menu-item" id="ctx-cpa" onclick="ctxComputeCPA()">Compute CPA</div>
+  <div class="ctx-menu-item" onclick="ctxExpandDeepUpstream()">Expand All Upstream</div>
+  <div class="ctx-menu-item" onclick="ctxExpandDeepDownstream()">Expand All Downstream</div>
+  <div class="ctx-menu-sep"></div>
+  <div class="ctx-menu-item" onclick="ctxComputeCPA()">Compute CPA</div>
   <div class="ctx-menu-sep"></div>
   <div class="ctx-menu-item" id="ctx-done" onclick="ctxToggleDone()"></div>
 </div>
@@ -646,6 +649,32 @@ async function ctxExpandDownstream() {
   hideCtxMenu();
   if (uid == null) return;
   await expandNode(uid, 'downstream');
+}
+
+async function ctxExpandDeepUpstream() {
+  const uid = ctxTargetUid;
+  hideCtxMenu();
+  if (uid == null) return;
+  showLoading('Expanding all upstream...');
+  const resp = await fetch(`/api/expand-deep/${uid}?direction=upstream`);
+  const d = await resp.json();
+  mergeData(d.nodes, d.edges);
+  relayout();
+  updatePrompt();
+  hideLoading();
+}
+
+async function ctxExpandDeepDownstream() {
+  const uid = ctxTargetUid;
+  hideCtxMenu();
+  if (uid == null) return;
+  showLoading('Expanding all downstream...');
+  const resp = await fetch(`/api/expand-deep/${uid}?direction=downstream`);
+  const d = await resp.json();
+  mergeData(d.nodes, d.edges);
+  relayout();
+  updatePrompt();
+  hideLoading();
 }
 
 function ctxComputeCPA() {

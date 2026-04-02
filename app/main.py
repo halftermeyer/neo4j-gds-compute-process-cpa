@@ -130,6 +130,37 @@ def expand_node(uid: int, direction: str = "both"):
         return {"nodes": nodes, "edges": edges}
 
 
+@app.get("/api/expand-deep/{uid}")
+def expand_deep(uid: int, direction: str = "upstream"):
+    """Return all transitive upstream or downstream nodes + edges. direction: upstream|downstream"""
+    driver = get_driver()
+    rel_filter = "<PRECEDES" if direction == "upstream" else "PRECEDES>"
+    with driver.session() as session:
+        result = session.run("""CYPHER 25
+            MATCH (center:Task {uid: $uid})
+            CALL apoc.path.subgraphNodes(center, {
+                relationshipFilter: $relFilter,
+                minLevel: 0
+            })
+            YIELD node AS n
+            WITH collect(n) AS nodes, [n IN collect(n) | n.uid] AS allUids
+            UNWIND nodes AS n
+            OPTIONAL MATCH (n)-[:PRECEDES]->(m:Task)
+            WHERE m.uid IN allUids
+            RETURN DISTINCT
+              n.uid AS uid, n.name AS name, n.duration AS duration, n:Done AS done,
+              collect(DISTINCT m.uid) AS targets
+        """, uid=uid, relFilter=rel_filter)
+        nodes = []
+        edges = []
+        for r in result:
+            nodes.append({"uid": r["uid"], "name": r["name"], "duration": r["duration"], "done": r["done"]})
+            for t in r["targets"]:
+                if t is not None:
+                    edges.append({"source": r["uid"], "target": t})
+        return {"nodes": nodes, "edges": edges}
+
+
 @app.get("/api/graph")
 def get_graph():
     """Return all Task nodes and PRECEDES relationships (use for Show All on small graphs)."""
