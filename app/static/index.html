@@ -9,23 +9,26 @@
 <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
 <style>
   :root {
-    --neo-blue: #0A6190;
-    --neo-dark: #014063;
+    --neo-blue: #4A9FD9;
+    --neo-dark: #0C1B2A;
     --neo-teal: #5DB3BF;
     --neo-cyan: #8FE3E8;
     --neo-green: #6FA646;
     --neo-marigold: #FFA901;
-    --neo-red: #D43300;
-    --neo-surface: #F5F7FA;
-    --neo-text: #1B1B1B;
-    --neo-muted: #525252;
+    --neo-red: #FF6B4A;
+    --neo-surface: #131F2E;
+    --neo-text: #E0E6ED;
+    --neo-muted: #8899AA;
+    --neo-bg: #0A1520;
+    --neo-card: #162232;
+    --neo-border: #1E3044;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f8f9fb;
+    background: var(--neo-bg);
     color: var(--neo-text);
     display: flex;
     height: 100vh;
@@ -35,8 +38,8 @@
   #sidebar {
     width: 380px;
     min-width: 380px;
-    background: white;
-    border-right: 1px solid #e0e4ea;
+    background: var(--neo-surface);
+    border-right: 1px solid var(--neo-border);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -44,8 +47,8 @@
 
   .sidebar-header {
     padding: 16px 20px;
-    border-bottom: 1px solid #e0e4ea;
-    background: linear-gradient(135deg, var(--neo-dark), var(--neo-blue));
+    border-bottom: 1px solid var(--neo-border);
+    background: linear-gradient(135deg, #061018, #0C1B2A);
     color: white;
   }
 
@@ -62,7 +65,7 @@
 
   .toolbar {
     padding: 10px 20px;
-    border-bottom: 1px solid #e0e4ea;
+    border-bottom: 1px solid var(--neo-border);
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
@@ -70,20 +73,21 @@
 
   .btn {
     padding: 6px 14px;
-    border: 1px solid #d0d5dd;
+    border: 1px solid var(--neo-border);
     border-radius: 6px;
-    background: white;
+    background: var(--neo-card);
+    color: var(--neo-text);
     font-size: 12px;
     cursor: pointer;
     transition: all 0.15s;
     font-weight: 500;
   }
 
-  .btn:hover { background: var(--neo-surface); border-color: var(--neo-teal); }
-  .btn.primary { background: var(--neo-blue); color: white; border-color: var(--neo-blue); }
-  .btn.primary:hover { background: var(--neo-dark); }
-  .btn.danger { background: var(--neo-red); color: white; border-color: var(--neo-red); }
-  .btn.danger:hover { opacity: 0.9; }
+  .btn:hover { background: #1E3044; border-color: var(--neo-teal); }
+  .btn.primary { background: #1A5276; color: white; border-color: var(--neo-blue); }
+  .btn.primary:hover { background: #1A6B9A; }
+  .btn.danger { background: #6B2010; color: #FF8A70; border-color: #8B3020; }
+  .btn.danger:hover { background: #7B2510; }
 
   #node-info {
     flex: 1;
@@ -100,7 +104,8 @@
   }
 
   .info-card {
-    background: var(--neo-surface);
+    background: var(--neo-card);
+    border: 1px solid var(--neo-border);
     border-radius: 8px;
     padding: 14px 16px;
     margin-bottom: 12px;
@@ -108,7 +113,7 @@
 
   .info-card h3 {
     font-size: 14px;
-    color: var(--neo-blue);
+    color: var(--neo-cyan);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -122,8 +127,8 @@
     font-weight: 600;
   }
 
-  .badge-done { background: #dff5e3; color: #145439; }
-  .badge-pending { background: #fff3cd; color: #856404; }
+  .badge-done { background: #0D2818; color: #6FA646; }
+  .badge-pending { background: #2A1F00; color: #FFA901; }
 
   .info-card .detail {
     font-size: 12px;
@@ -136,8 +141,8 @@
   .path-list { list-style: none; }
 
   .path-item {
-    background: white;
-    border: 1px solid #e0e4ea;
+    background: var(--neo-card);
+    border: 1px solid var(--neo-border);
     border-radius: 6px;
     padding: 10px 12px;
     margin-bottom: 8px;
@@ -145,8 +150,8 @@
     transition: all 0.15s;
   }
 
-  .path-item:hover { border-color: var(--neo-teal); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .path-item.active { border-color: var(--neo-marigold); background: #fffbf0; }
+  .path-item:hover { border-color: var(--neo-teal); box-shadow: 0 1px 8px rgba(0,0,0,0.2); }
+  .path-item.active { border-color: var(--neo-marigold); background: #1A1500; }
 
   .path-item .cost {
     font-size: 18px;
@@ -162,26 +167,27 @@
 
   .path-item .path-nodes {
     font-size: 10px;
-    color: var(--neo-blue);
+    color: var(--neo-cyan);
     margin-top: 4px;
     word-break: break-all;
   }
 
   #cy {
     flex: 1;
-    background: #f8f9fb;
+    background: var(--neo-bg);
   }
 
   .legend {
     position: absolute;
     bottom: 16px;
     right: 16px;
-    background: white;
-    border: 1px solid #e0e4ea;
+    background: var(--neo-surface);
+    border: 1px solid var(--neo-border);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 11px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    color: var(--neo-muted);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     z-index: 10;
   }
 
@@ -202,13 +208,13 @@
   .loading-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255,255,255,0.7);
+    background: rgba(10, 21, 32, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 14px;
     font-weight: 600;
-    color: var(--neo-blue);
+    color: var(--neo-cyan);
     z-index: 1000;
     display: none;
   }
@@ -229,16 +235,17 @@
   .connect-overlay.hidden { display: none; }
 
   .connect-box {
-    background: white;
+    background: var(--neo-surface);
+    border: 1px solid var(--neo-border);
     border-radius: 12px;
     padding: 32px 36px;
     width: 380px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   }
 
   .connect-box h2 {
     font-size: 18px;
-    color: var(--neo-blue);
+    color: var(--neo-cyan);
     margin-bottom: 4px;
   }
 
@@ -260,11 +267,13 @@
   .connect-box input {
     width: 100%;
     padding: 8px 10px;
-    border: 1px solid #d0d5dd;
+    border: 1px solid var(--neo-border);
     border-radius: 6px;
     font-size: 13px;
     font-family: inherit;
     outline: none;
+    background: var(--neo-card);
+    color: var(--neo-text);
     transition: border-color 0.15s;
   }
 
@@ -289,12 +298,12 @@
     position: absolute;
     top: 12px;
     right: 16px;
-    background: white;
-    border: 1px solid #e0e4ea;
+    background: var(--neo-surface);
+    border: 1px solid var(--neo-border);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 11px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     z-index: 10;
     display: flex;
     flex-direction: column;
@@ -379,12 +388,12 @@
 </div>
 
 <div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#6FA646;border-color:#145439"></div> Done</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#E8F3F8;border-color:#0A6190"></div> Pending</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#FFA901;border-color:#C07A00"></div> Selected / scoping node</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#D43300;border-color:#9E2500"></div> Critical path</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#8FE3E8;border-color:#0A6190"></div> Frontier node</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#FDF0CC;border-color:#C07A00"></div> Upstream subgraph</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#0D2818;border-color:#2D8B4E"></div> Done</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1A3A5C;border-color:#4A9FD9"></div> Pending</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FFA901;border-color:#FFD54F"></div> Selected / scoping node</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6B2010;border-color:#FF6B4A"></div> Critical path</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#0A3A4A;border-color:#8FE3E8"></div> Frontier node</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1A1500;border-color:#8B6914"></div> Upstream subgraph</div>
 </div>
 
 <div class="loading-overlay" id="loading">Computing...</div>
@@ -402,10 +411,10 @@ const cy = cytoscape({
         'font-size': '8px',
         'font-weight': '500',
         'font-family': '-apple-system, sans-serif',
-        'background-color': '#E8F3F8',
+        'background-color': '#1A3A5C',
         'border-width': 2,
-        'border-color': '#0A6190',
-        'color': '#014063',
+        'border-color': '#4A9FD9',
+        'color': '#B0D4F1',
         'width': 'mapData(duration, 1, 15, 35, 70)',
         'height': 'mapData(duration, 1, 15, 35, 70)',
         'text-wrap': 'wrap',
@@ -415,19 +424,19 @@ const cy = cytoscape({
     {
       selector: 'node[done]',
       style: {
-        'background-color': '#dff5e3',
-        'border-color': '#145439',
-        'color': '#145439',
-        'opacity': 0.6,
+        'background-color': '#0D2818',
+        'border-color': '#2D8B4E',
+        'color': '#4CAF50',
+        'opacity': 0.5,
       }
     },
     {
       selector: 'node.selected-node',
       style: {
         'background-color': '#FFA901',
-        'border-color': '#C07A00',
+        'border-color': '#FFD54F',
         'border-width': 3,
-        'color': '#4A2D00',
+        'color': '#FFF8E1',
         'opacity': 1,
         'z-index': 10,
       }
@@ -435,10 +444,10 @@ const cy = cytoscape({
     {
       selector: 'node.critical-path',
       style: {
-        'background-color': '#FDECE8',
-        'border-color': '#D43300',
+        'background-color': '#6B2010',
+        'border-color': '#FF6B4A',
         'border-width': 3,
-        'color': '#D43300',
+        'color': '#FFAB91',
         'opacity': 1,
         'z-index': 10,
       }
@@ -446,10 +455,10 @@ const cy = cytoscape({
     {
       selector: 'node.frontier-node',
       style: {
-        'background-color': '#8FE3E8',
-        'border-color': '#0A6190',
+        'background-color': '#0A3A4A',
+        'border-color': '#8FE3E8',
         'border-width': 3,
-        'color': '#014063',
+        'color': '#B2EBF2',
         'opacity': 1,
         'z-index': 10,
       }
@@ -458,20 +467,20 @@ const cy = cytoscape({
       selector: 'edge',
       style: {
         'width': 1.5,
-        'line-color': '#b0bec5',
-        'target-arrow-color': '#b0bec5',
+        'line-color': '#1E3A50',
+        'target-arrow-color': '#1E3A50',
         'target-arrow-shape': 'triangle',
         'curve-style': 'bezier',
         'arrow-scale': 0.8,
-        'opacity': 0.5,
+        'opacity': 0.6,
       }
     },
     {
       selector: 'edge.critical-edge',
       style: {
         'width': 3,
-        'line-color': '#D43300',
-        'target-arrow-color': '#D43300',
+        'line-color': '#FF6B4A',
+        'target-arrow-color': '#FF6B4A',
         'opacity': 1,
         'z-index': 10,
       }
@@ -479,10 +488,10 @@ const cy = cytoscape({
     {
       selector: 'node.ancestor-node',
       style: {
-        'background-color': '#FDF0CC',
-        'border-color': '#C07A00',
+        'background-color': '#1A1500',
+        'border-color': '#8B6914',
         'border-width': 1.5,
-        'color': '#856404',
+        'color': '#D4A844',
         'opacity': 0.5,
         'z-index': 5,
       }
@@ -491,19 +500,19 @@ const cy = cytoscape({
       selector: 'edge.ancestor-edge',
       style: {
         'width': 1.5,
-        'line-color': '#FFC450',
-        'target-arrow-color': '#FFC450',
-        'opacity': 0.35,
+        'line-color': '#6B5000',
+        'target-arrow-color': '#6B5000',
+        'opacity': 0.4,
         'z-index': 5,
       }
     },
     {
       selector: 'node.dimmed',
-      style: { 'opacity': 0.15 }
+      style: { 'opacity': 0.08 }
     },
     {
       selector: 'edge.dimmed',
-      style: { 'opacity': 0.08 }
+      style: { 'opacity': 0.04 }
     },
   ],
   layout: { name: 'preset' },
