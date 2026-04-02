@@ -628,34 +628,40 @@ function showCtxMenu(x, y, uid) {
 
 function hideCtxMenu() {
   document.getElementById('ctx-menu').classList.remove('show');
-  ctxTargetUid = null;
 }
 
-document.addEventListener('click', hideCtxMenu);
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.ctx-menu')) hideCtxMenu();
+});
 
 async function ctxExpandUpstream() {
-  if (ctxTargetUid == null) return;
+  const uid = ctxTargetUid;
   hideCtxMenu();
-  await expandNode(ctxTargetUid, 'upstream');
+  if (uid == null) return;
+  await expandNode(uid, 'upstream');
 }
 
 async function ctxExpandDownstream() {
-  if (ctxTargetUid == null) return;
+  const uid = ctxTargetUid;
   hideCtxMenu();
-  await expandNode(ctxTargetUid, 'downstream');
+  if (uid == null) return;
+  await expandNode(uid, 'downstream');
 }
 
 function ctxComputeCPA() {
-  if (ctxTargetUid == null) return;
-  selectNode(ctxTargetUid);
+  const uid = ctxTargetUid;
   hideCtxMenu();
+  if (uid == null) return;
+  selectNode(uid);
 }
 
 async function ctxToggleDone() {
-  if (ctxTargetUid == null) return;
-  const node = knownNodes[String(ctxTargetUid)];
+  const uid = ctxTargetUid;
+  hideCtxMenu();
+  if (uid == null) return;
+  const node = knownNodes[String(uid)];
   const markDone = !(node && node.done);
-  const endpoint = markDone ? `/api/complete/${ctxTargetUid}` : `/api/uncomplete/${ctxTargetUid}`;
+  const endpoint = markDone ? `/api/complete/${uid}` : `/api/uncomplete/${uid}`;
   await fetch(endpoint, { method: 'POST' });
   // Refresh task index + update visible nodes
   const resp = await fetch('/api/tasks');
@@ -671,7 +677,6 @@ async function ctxToggleDone() {
     if (doneMap[n.id()]) n.data('done', true);
     else n.removeData('done');
   });
-  hideCtxMenu();
   clearCpaHighlights();
 }
 
