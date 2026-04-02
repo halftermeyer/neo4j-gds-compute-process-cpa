@@ -286,9 +286,9 @@
     <h2>Connect to Neo4j</h2>
     <div class="subtitle">Requires GDS and APOC plugins<br><strong style="color:var(--neo-red)">Warning:</strong> loading datasets will erase all data in the target database.</div>
     <label>URI</label>
-    <input type="text" id="conn-uri" list="uri-options" value="bolt://host.docker.internal:7687" />
+    <input type="text" id="conn-uri" list="uri-options" value="bolt://localhost:7687" />
     <datalist id="uri-options">
-      <option value="bolt://host.docker.internal:7687">Docker to host</option>
+      <option value="bolt://localhost:7687">Docker to host</option>
       <option value="bolt://localhost:7687">Local</option>
       <option value="neo4j+s://xxxxxxxx.databases.neo4j.io">Aura</option>
     </datalist>
