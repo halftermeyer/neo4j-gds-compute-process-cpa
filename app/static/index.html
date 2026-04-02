@@ -22,6 +22,37 @@
     --neo-bg: #0A1520;
     --neo-card: #162232;
     --neo-border: #1E3044;
+    /* node colors (used by JS) */
+    --node-bg: #1A3A5C;
+    --node-border: #4A9FD9;
+    --node-text: #B0D4F1;
+    --node-done-bg: #0D2818;
+    --node-done-border: #2D8B4E;
+    --node-done-text: #4CAF50;
+    --edge-color: #1E3A50;
+  }
+
+  body.light {
+    --neo-blue: #0A6190;
+    --neo-dark: #014063;
+    --neo-teal: #5DB3BF;
+    --neo-cyan: #0A6190;
+    --neo-green: #145439;
+    --neo-marigold: #C07A00;
+    --neo-red: #D43300;
+    --neo-surface: #F5F7FA;
+    --neo-text: #1B1B1B;
+    --neo-muted: #525252;
+    --neo-bg: #FFFFFF;
+    --neo-card: #F0F2F5;
+    --neo-border: #D0D5DD;
+    --node-bg: #E8F3F8;
+    --node-border: #0A6190;
+    --node-text: #014063;
+    --node-done-bg: #DFF5E3;
+    --node-done-border: #145439;
+    --node-done-text: #145439;
+    --edge-color: #B0BEC5;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -313,6 +344,7 @@
     <button class="btn" onclick="clearGraph()">Clear View</button>
     <button class="btn" onclick="relayout()">Tidy</button>
     <button class="btn" onclick="fitGraph()">Fit</button>
+    <button class="btn" onclick="toggleTheme()" id="theme-btn" title="Toggle light/dark theme">Light</button>
   </div>
   <div class="toolbar" style="flex-wrap:wrap;gap:4px;">
     <span style="font-size:11px;font-weight:600;color:var(--neo-muted);width:100%">Generate dataset:</span>
@@ -999,6 +1031,45 @@ async function doConnect() {
 }
 
 document.getElementById('conn-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doConnect(); });
+
+// ── Theme toggle ───────────────────────────────────────────────────
+const darkStyles = {
+  node:          { 'background-color': '#1A3A5C', 'border-color': '#4A9FD9', 'color': '#B0D4F1' },
+  'node[done]':  { 'background-color': '#0D2818', 'border-color': '#2D8B4E', 'color': '#4CAF50' },
+  edge:          { 'line-color': '#1E3A50', 'target-arrow-color': '#1E3A50' },
+  'node.critical-path': { 'background-color': '#6B2010', 'border-color': '#FF6B4A', 'color': '#FFAB91' },
+  'node.frontier-node': { 'background-color': '#0A3A4A', 'border-color': '#8FE3E8', 'color': '#B2EBF2' },
+  'node.ancestor-node': { 'background-color': '#0F2A3D', 'border-color': '#3A7A9A', 'color': '#6AAABB' },
+  'edge.ancestor-edge': { 'line-color': '#2A5A70', 'target-arrow-color': '#2A5A70' },
+  'node.dimmed':        { 'opacity': 0.08 },
+  'edge.dimmed':        { 'opacity': 0.04 },
+};
+
+const lightStyles = {
+  node:          { 'background-color': '#E8F3F8', 'border-color': '#0A6190', 'color': '#014063' },
+  'node[done]':  { 'background-color': '#DFF5E3', 'border-color': '#145439', 'color': '#145439' },
+  edge:          { 'line-color': '#B0BEC5', 'target-arrow-color': '#B0BEC5' },
+  'node.critical-path': { 'background-color': '#FDECE8', 'border-color': '#D43300', 'color': '#D43300' },
+  'node.frontier-node': { 'background-color': '#E0F7FA', 'border-color': '#0A6190', 'color': '#014063' },
+  'node.ancestor-node': { 'background-color': '#F0F4F8', 'border-color': '#90A4AE', 'color': '#607D8B' },
+  'edge.ancestor-edge': { 'line-color': '#B0BEC5', 'target-arrow-color': '#B0BEC5' },
+  'node.dimmed':        { 'opacity': 0.15 },
+  'edge.dimmed':        { 'opacity': 0.08 },
+};
+
+let isDark = true;
+
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle('light', !isDark);
+  document.getElementById('theme-btn').textContent = isDark ? 'Light' : 'Dark';
+
+  const styles = isDark ? darkStyles : lightStyles;
+  for (const [sel, props] of Object.entries(styles)) {
+    cy.style().selector(sel).style(props);
+  }
+  cy.style().update();
+}
 
 // ── Init ───────────────────────────────────────────────────────────
 (async () => {
