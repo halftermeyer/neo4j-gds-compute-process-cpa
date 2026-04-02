@@ -52,16 +52,8 @@
     color: white;
   }
 
-  .sidebar-header h1 {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-
-  .sidebar-header p {
-    font-size: 11px;
-    opacity: 0.8;
-  }
+  .sidebar-header h1 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .sidebar-header p { font-size: 11px; opacity: 0.8; }
 
   .toolbar {
     padding: 10px 20px;
@@ -88,6 +80,54 @@
   .btn.primary:hover { background: #1A6B9A; }
   .btn.danger { background: #6B2010; color: #FF8A70; border-color: #8B3020; }
   .btn.danger:hover { background: #7B2510; }
+
+  /* Search bar */
+  .search-bar {
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--neo-border);
+    position: relative;
+  }
+
+  .search-bar input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--neo-border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--neo-card);
+    color: var(--neo-text);
+    outline: none;
+  }
+
+  .search-bar input:focus { border-color: var(--neo-teal); }
+  .search-bar input::placeholder { color: var(--neo-muted); }
+
+  .search-results {
+    position: absolute;
+    top: 100%;
+    left: 20px;
+    right: 20px;
+    background: var(--neo-card);
+    border: 1px solid var(--neo-border);
+    border-radius: 0 0 6px 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+  }
+
+  .search-results.show { display: block; }
+
+  .search-result-item {
+    padding: 8px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--neo-border);
+  }
+
+  .search-result-item:hover { background: #1E3044; }
+  .search-result-item:last-child { border-bottom: none; }
 
   #node-info {
     flex: 1;
@@ -120,22 +160,11 @@
     gap: 6px;
   }
 
-  .info-card .badge {
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 600;
-  }
-
+  .info-card .badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
   .badge-done { background: #0D2818; color: #6FA646; }
   .badge-pending { background: #2A1F00; color: #FFA901; }
 
-  .info-card .detail {
-    font-size: 12px;
-    color: var(--neo-muted);
-    margin: 4px 0;
-  }
-
+  .info-card .detail { font-size: 12px; color: var(--neo-muted); margin: 4px 0; }
   .info-card .detail strong { color: var(--neo-text); }
 
   .path-list { list-style: none; }
@@ -152,30 +181,11 @@
 
   .path-item:hover { border-color: var(--neo-teal); box-shadow: 0 1px 8px rgba(0,0,0,0.2); }
   .path-item.active { border-color: var(--neo-marigold); background: #1A1500; }
+  .path-item .cost { font-size: 18px; font-weight: 700; color: var(--neo-red); }
+  .path-item .frontier { font-size: 11px; color: var(--neo-muted); margin-top: 2px; }
+  .path-item .path-nodes { font-size: 10px; color: var(--neo-cyan); margin-top: 4px; word-break: break-all; }
 
-  .path-item .cost {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--neo-red);
-  }
-
-  .path-item .frontier {
-    font-size: 11px;
-    color: var(--neo-muted);
-    margin-top: 2px;
-  }
-
-  .path-item .path-nodes {
-    font-size: 10px;
-    color: var(--neo-cyan);
-    margin-top: 4px;
-    word-break: break-all;
-  }
-
-  #cy {
-    flex: 1;
-    background: var(--neo-bg);
-  }
+  #cy { flex: 1; background: var(--neo-bg); }
 
   .legend {
     position: absolute;
@@ -191,143 +201,82 @@
     z-index: 10;
   }
 
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 3px 0;
-  }
-
-  .legend-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid #888;
-  }
+  .legend-item { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #888; }
 
   .loading-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(10, 21, 32, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--neo-cyan);
-    z-index: 1000;
-    display: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--neo-cyan);
+    z-index: 1000; display: none;
   }
 
   .loading-overlay.show { display: flex; }
 
   /* Connect dialog */
   .connect-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(4, 24, 35, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
+    display: flex; align-items: center; justify-content: center; z-index: 2000;
   }
 
   .connect-overlay.hidden { display: none; }
 
   .connect-box {
-    background: var(--neo-surface);
-    border: 1px solid var(--neo-border);
-    border-radius: 12px;
-    padding: 32px 36px;
-    width: 380px;
+    background: var(--neo-surface); border: 1px solid var(--neo-border);
+    border-radius: 12px; padding: 32px 36px; width: 380px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   }
 
-  .connect-box h2 {
-    font-size: 18px;
-    color: var(--neo-cyan);
-    margin-bottom: 4px;
-  }
-
-  .connect-box .subtitle {
-    font-size: 12px;
-    color: var(--neo-muted);
-    margin-bottom: 20px;
-  }
-
-  .connect-box label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--neo-muted);
-    margin-bottom: 4px;
-    margin-top: 12px;
-  }
-
+  .connect-box h2 { font-size: 18px; color: var(--neo-cyan); margin-bottom: 4px; }
+  .connect-box .subtitle { font-size: 12px; color: var(--neo-muted); margin-bottom: 20px; }
+  .connect-box label { display: block; font-size: 11px; font-weight: 600; color: var(--neo-muted); margin-bottom: 4px; margin-top: 12px; }
   .connect-box input {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--neo-border);
-    border-radius: 6px;
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    background: var(--neo-card);
-    color: var(--neo-text);
-    transition: border-color 0.15s;
+    width: 100%; padding: 8px 10px; border: 1px solid var(--neo-border);
+    border-radius: 6px; font-size: 13px; font-family: inherit; outline: none;
+    background: var(--neo-card); color: var(--neo-text); transition: border-color 0.15s;
   }
-
   .connect-box input:focus { border-color: var(--neo-teal); }
-
-  .connect-box .error {
-    color: var(--neo-red);
-    font-size: 11px;
-    margin-top: 8px;
-    min-height: 16px;
-  }
-
-  .connect-box .btn-connect {
-    width: 100%;
-    margin-top: 16px;
-    padding: 10px;
-    font-size: 14px;
-    font-weight: 600;
-  }
+  .connect-box .error { color: var(--neo-red); font-size: 11px; margin-top: 8px; min-height: 16px; }
+  .connect-box .btn-connect { width: 100%; margin-top: 16px; padding: 10px; font-size: 14px; font-weight: 600; }
 
   .spacing-controls {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    background: var(--neo-surface);
+    position: absolute; top: 12px; right: 16px;
+    background: var(--neo-surface); border: 1px solid var(--neo-border);
+    border-radius: 8px; padding: 10px 14px; font-size: 11px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 10;
+    display: flex; flex-direction: column; gap: 6px; min-width: 160px;
+  }
+
+  .spacing-controls label { display: flex; align-items: center; gap: 6px; color: var(--neo-muted); font-weight: 500; }
+  .spacing-controls label span { min-width: 52px; }
+  .spacing-controls input[type="range"] { flex: 1; accent-color: var(--neo-teal); height: 4px; }
+
+  /* Context menu */
+  .ctx-menu {
+    position: fixed;
+    background: var(--neo-card);
     border: 1px solid var(--neo-border);
     border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 11px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 160px;
+    padding: 4px 0;
+    min-width: 200px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    z-index: 500;
+    display: none;
   }
 
-  .spacing-controls label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--neo-muted);
-    font-weight: 500;
+  .ctx-menu.show { display: block; }
+
+  .ctx-menu-item {
+    padding: 8px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--neo-text);
   }
 
-  .spacing-controls label span {
-    min-width: 52px;
-  }
-
-  .spacing-controls input[type="range"] {
-    flex: 1;
-    accent-color: var(--neo-teal);
-    height: 4px;
-  }
+  .ctx-menu-item:hover { background: #1E3044; }
+  .ctx-menu-sep { height: 1px; background: var(--neo-border); margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -339,7 +288,7 @@
     <label>URI</label>
     <input type="text" id="conn-uri" list="uri-options" value="bolt://host.docker.internal:7687" />
     <datalist id="uri-options">
-      <option value="bolt://host.docker.internal:7687">Docker &rarr; host</option>
+      <option value="bolt://host.docker.internal:7687">Docker to host</option>
       <option value="bolt://localhost:7687">Local</option>
       <option value="neo4j+s://xxxxxxxx.databases.neo4j.io">Aura</option>
     </datalist>
@@ -355,28 +304,29 @@
 <div id="sidebar">
   <div class="sidebar-header">
     <h1>CPA at Scale Explorer</h1>
-    <p>Click a node to compute critical paths. Right-click to toggle completion.</p>
+    <p>Search a task, then explore upstream, downstream, or compute CPA.</p>
   </div>
   <div class="toolbar">
     <button class="btn" onclick="document.getElementById('connect-overlay').classList.remove('hidden')">Connect</button>
     <button class="btn primary" onclick="resetDataset()">60-Task Dataset</button>
-    <button class="btn" onclick="fitGraph()">Fit View</button>
-    <button class="btn" onclick="clearSelection()">Clear Selection</button>
+    <button class="btn" onclick="showAllGraph()">Show All</button>
+    <button class="btn" onclick="clearGraph()">Clear View</button>
+    <button class="btn" onclick="fitGraph()">Fit</button>
   </div>
   <div class="toolbar" style="flex-wrap:wrap;gap:4px;">
     <span style="font-size:11px;font-weight:600;color:var(--neo-muted);width:100%">Generate dataset:</span>
-    <label style="font-size:10px;color:var(--neo-muted)">Layers <input type="number" id="gen-layers" value="20" min="2" max="50" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid #d0d5dd;border-radius:4px;"></label>
-    <label style="font-size:10px;color:var(--neo-muted)">Width <input type="number" id="gen-width" value="15" min="2" max="100" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid #d0d5dd;border-radius:4px;"></label>
-    <label style="font-size:10px;color:var(--neo-muted)">Density <input type="number" id="gen-density" value="0.3" min="0" max="1" step="0.1" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid #d0d5dd;border-radius:4px;"></label>
-    <label style="font-size:10px;color:var(--neo-muted)">Seed <input type="number" id="gen-seed" value="42" min="0" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid #d0d5dd;border-radius:4px;"></label>
+    <label style="font-size:10px;color:var(--neo-muted)">Layers <input type="number" id="gen-layers" value="20" min="2" max="50" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid var(--neo-border);border-radius:4px;background:var(--neo-card);color:var(--neo-text);"></label>
+    <label style="font-size:10px;color:var(--neo-muted)">Width <input type="number" id="gen-width" value="15" min="2" max="100" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid var(--neo-border);border-radius:4px;background:var(--neo-card);color:var(--neo-text);"></label>
+    <label style="font-size:10px;color:var(--neo-muted)">Density <input type="number" id="gen-density" value="0.3" min="0" max="1" step="0.1" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid var(--neo-border);border-radius:4px;background:var(--neo-card);color:var(--neo-text);"></label>
+    <label style="font-size:10px;color:var(--neo-muted)">Seed <input type="number" id="gen-seed" value="42" min="0" style="width:40px;padding:2px 4px;font-size:11px;border:1px solid var(--neo-border);border-radius:4px;background:var(--neo-card);color:var(--neo-text);"></label>
     <button class="btn danger" onclick="resetLargeDataset()">Generate</button>
   </div>
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search task by name..." oninput="onSearch()" onfocus="onSearch()" />
+    <div class="search-results" id="search-results"></div>
+  </div>
   <div id="node-info">
-    <div class="info-empty">
-      Click on any node in the graph to see its details and compute critical paths.<br><br>
-      <strong>Left-click</strong> = select + CPA<br>
-      <strong>Right-click</strong> = toggle Done
-    </div>
+    <div class="info-empty" id="graph-prompt"></div>
   </div>
 </div>
 
@@ -390,10 +340,20 @@
 <div class="legend">
   <div class="legend-item"><div class="legend-dot" style="background:#0D2818;border-color:#2D8B4E"></div> Done</div>
   <div class="legend-item"><div class="legend-dot" style="background:#1A3A5C;border-color:#4A9FD9"></div> Pending</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#FFA901;border-color:#FFD54F"></div> Selected / scoping node</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FFA901;border-color:#FFD54F"></div> Selected</div>
   <div class="legend-item"><div class="legend-dot" style="background:#6B2010;border-color:#FF6B4A"></div> Critical path</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#0A3A4A;border-color:#8FE3E8"></div> Frontier node</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#0A3A4A;border-color:#8FE3E8"></div> Frontier</div>
   <div class="legend-item"><div class="legend-dot" style="background:#0F2A3D;border-color:#3A7A9A"></div> Upstream subgraph</div>
+</div>
+
+<!-- Context menu -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-menu-item" id="ctx-upstream" onclick="ctxExpandUpstream()">Expand Upstream</div>
+  <div class="ctx-menu-item" id="ctx-downstream" onclick="ctxExpandDownstream()">Expand Downstream</div>
+  <div class="ctx-menu-sep"></div>
+  <div class="ctx-menu-item" id="ctx-cpa" onclick="ctxComputeCPA()">Compute CPA</div>
+  <div class="ctx-menu-sep"></div>
+  <div class="ctx-menu-item" id="ctx-done" onclick="ctxToggleDone()"></div>
 </div>
 
 <div class="loading-overlay" id="loading">Computing...</div>
@@ -405,161 +365,110 @@ const cy = cytoscape({
     {
       selector: 'node',
       style: {
-        'label': 'data(label)',
-        'text-valign': 'center',
-        'text-halign': 'center',
-        'font-size': '8px',
-        'font-weight': '500',
-        'font-family': '-apple-system, sans-serif',
-        'background-color': '#1A3A5C',
-        'border-width': 2,
-        'border-color': '#4A9FD9',
+        'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
+        'font-size': '8px', 'font-weight': '500', 'font-family': '-apple-system, sans-serif',
+        'background-color': '#1A3A5C', 'border-width': 2, 'border-color': '#4A9FD9',
         'color': '#B0D4F1',
         'width': 'mapData(duration, 1, 15, 35, 70)',
         'height': 'mapData(duration, 1, 15, 35, 70)',
-        'text-wrap': 'wrap',
-        'text-max-width': '80px',
+        'text-wrap': 'wrap', 'text-max-width': '80px',
       }
     },
-    {
-      selector: 'node[done]',
-      style: {
-        'background-color': '#0D2818',
-        'border-color': '#2D8B4E',
-        'color': '#4CAF50',
-        'opacity': 0.5,
-      }
-    },
-    {
-      selector: 'node.selected-node',
-      style: {
-        'background-color': '#FFA901',
-        'border-color': '#FFD54F',
-        'border-width': 3,
-        'color': '#FFF8E1',
-        'opacity': 1,
-        'z-index': 10,
-      }
-    },
-    {
-      selector: 'node.critical-path',
-      style: {
-        'background-color': '#6B2010',
-        'border-color': '#FF6B4A',
-        'border-width': 3,
-        'color': '#FFAB91',
-        'opacity': 1,
-        'z-index': 10,
-      }
-    },
-    {
-      selector: 'node.frontier-node',
-      style: {
-        'background-color': '#0A3A4A',
-        'border-color': '#8FE3E8',
-        'border-width': 3,
-        'color': '#B2EBF2',
-        'opacity': 1,
-        'z-index': 10,
-      }
-    },
-    {
-      selector: 'edge',
-      style: {
-        'width': 1.5,
-        'line-color': '#1E3A50',
-        'target-arrow-color': '#1E3A50',
-        'target-arrow-shape': 'triangle',
-        'curve-style': 'bezier',
-        'arrow-scale': 0.8,
-        'opacity': 0.6,
-      }
-    },
-    {
-      selector: 'edge.critical-edge',
-      style: {
-        'width': 3,
-        'line-color': '#FF6B4A',
-        'target-arrow-color': '#FF6B4A',
-        'opacity': 1,
-        'z-index': 10,
-      }
-    },
-    {
-      selector: 'node.ancestor-node',
-      style: {
-        'background-color': '#0F2A3D',
-        'border-color': '#3A7A9A',
-        'border-width': 1.5,
-        'color': '#6AAABB',
-        'opacity': 0.6,
-        'z-index': 5,
-      }
-    },
-    {
-      selector: 'edge.ancestor-edge',
-      style: {
-        'width': 1.5,
-        'line-color': '#2A5A70',
-        'target-arrow-color': '#2A5A70',
-        'opacity': 0.5,
-        'z-index': 5,
-      }
-    },
-    {
-      selector: 'node.dimmed',
-      style: { 'opacity': 0.08 }
-    },
-    {
-      selector: 'edge.dimmed',
-      style: { 'opacity': 0.04 }
-    },
+    { selector: 'node[done]', style: { 'background-color': '#0D2818', 'border-color': '#2D8B4E', 'color': '#4CAF50', 'opacity': 0.5 } },
+    { selector: 'node.selected-node', style: { 'background-color': '#FFA901', 'border-color': '#FFD54F', 'border-width': 3, 'color': '#FFF8E1', 'opacity': 1, 'z-index': 10 } },
+    { selector: 'node.critical-path', style: { 'background-color': '#6B2010', 'border-color': '#FF6B4A', 'border-width': 3, 'color': '#FFAB91', 'opacity': 1, 'z-index': 10 } },
+    { selector: 'node.frontier-node', style: { 'background-color': '#0A3A4A', 'border-color': '#8FE3E8', 'border-width': 3, 'color': '#B2EBF2', 'opacity': 1, 'z-index': 10 } },
+    { selector: 'edge', style: { 'width': 1.5, 'line-color': '#1E3A50', 'target-arrow-color': '#1E3A50', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'arrow-scale': 0.8, 'opacity': 0.6 } },
+    { selector: 'edge.critical-edge', style: { 'width': 3, 'line-color': '#FF6B4A', 'target-arrow-color': '#FF6B4A', 'opacity': 1, 'z-index': 10 } },
+    { selector: 'node.ancestor-node', style: { 'background-color': '#0F2A3D', 'border-color': '#3A7A9A', 'border-width': 1.5, 'color': '#6AAABB', 'opacity': 0.6, 'z-index': 5 } },
+    { selector: 'edge.ancestor-edge', style: { 'width': 1.5, 'line-color': '#2A5A70', 'target-arrow-color': '#2A5A70', 'opacity': 0.5, 'z-index': 5 } },
+    { selector: 'node.dimmed', style: { 'opacity': 0.08 } },
+    { selector: 'edge.dimmed', style: { 'opacity': 0.04 } },
   ],
   layout: { name: 'preset' },
-  minZoom: 0.02,
-  maxZoom: 3,
-  wheelSensitivity: 0.3,
+  minZoom: 0.02, maxZoom: 3, wheelSensitivity: 0.3,
 });
 
-let graphData = null;
+// ── State ──────────────────────────────────────────────────────────
+let graphData = null;           // full graph from API
+let visibleUids = new Set();    // currently shown node UIDs (strings)
 let currentCpa = null;
 let currentAncestorUids = [];
 let currentAncestorEdges = [];
 let currentScopingUid = null;
-let basePositions = {};  // uid -> {x, y} from layout
+let ctxTargetUid = null;        // right-click target
 
+// ── Adjacency (built client-side from graphData.edges) ─────────────
+let childrenOf = {};  // uid -> [uid] (downstream via PRECEDES)
+let parentsOf = {};   // uid -> [uid] (upstream via PRECEDES)
+
+function buildAdjacency() {
+  childrenOf = {};
+  parentsOf = {};
+  if (!graphData) return;
+  for (const e of graphData.edges) {
+    const s = String(e.source), t = String(e.target);
+    if (!childrenOf[s]) childrenOf[s] = [];
+    childrenOf[s].push(t);
+    if (!parentsOf[t]) parentsOf[t] = [];
+    parentsOf[t].push(s);
+  }
+}
+
+function getUpstream(uid) {
+  // BFS upstream (parents)
+  const visited = new Set();
+  const queue = [String(uid)];
+  while (queue.length) {
+    const n = queue.shift();
+    if (visited.has(n)) continue;
+    visited.add(n);
+    for (const p of (parentsOf[n] || [])) queue.push(p);
+  }
+  return visited;
+}
+
+function getDownstream(uid) {
+  const visited = new Set();
+  const queue = [String(uid)];
+  while (queue.length) {
+    const n = queue.shift();
+    if (visited.has(n)) continue;
+    visited.add(n);
+    for (const c of (childrenOf[n] || [])) queue.push(c);
+  }
+  return visited;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
 function showLoading(msg) {
   const el = document.getElementById('loading');
   el.textContent = msg || 'Computing...';
   el.classList.add('show');
 }
 
-function hideLoading() {
-  document.getElementById('loading').classList.remove('show');
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+
+function nodeMap() {
+  const m = {};
+  if (graphData) for (const n of graphData.nodes) m[String(n.uid)] = n;
+  return m;
 }
 
-async function loadGraph() {
-  showLoading('Loading graph...');
-  const resp = await fetch('/api/graph');
-  graphData = await resp.json();
-  renderGraph();
-  hideLoading();
-}
-
-function renderGraph() {
+// ── Render visible subgraph ────────────────────────────────────────
+function renderVisible() {
   cy.elements().remove();
   const elements = [];
+  const nm = nodeMap();
 
-  for (const node of graphData.nodes) {
-    const shortName = node.name.replace(/_/g, '\n');
+  for (const uid of visibleUids) {
+    const node = nm[uid];
+    if (!node) continue;
     const el = {
       group: 'nodes',
       data: {
-        id: String(node.uid),
-        label: shortName,
-        name: node.name,
-        duration: node.duration,
-        uid: node.uid,
+        id: uid, label: node.name.replace(/_/g, '\n'),
+        name: node.name, duration: node.duration, uid: node.uid,
       }
     };
     if (node.done) el.data.done = true;
@@ -567,44 +476,31 @@ function renderGraph() {
   }
 
   for (const edge of graphData.edges) {
-    elements.push({
-      group: 'edges',
-      data: {
-        id: `e_${edge.source}_${edge.target}`,
-        source: String(edge.source),
-        target: String(edge.target),
-      }
-    });
+    const s = String(edge.source), t = String(edge.target);
+    if (visibleUids.has(s) && visibleUids.has(t)) {
+      elements.push({ group: 'edges', data: { id: `e_${s}_${t}`, source: s, target: t } });
+    }
   }
 
   cy.add(elements);
 
-  const nodeCount = graphData.nodes.length;
-  // Always use dagre LR for consistent left-to-right DAG rendering.
-  // Reduce spacing on large graphs to keep layout tractable.
-  const large = nodeCount > 200;
+  const large = visibleUids.size > 200;
   cy.layout({
-    name: 'dagre',
-    rankDir: 'LR',
-    nodeSep: large ? 10 : 30,
-    edgeSep: large ? 5 : 10,
-    rankSep: large ? 40 : 80,
-    padding: 30,
+    name: 'dagre', rankDir: 'LR',
+    nodeSep: large ? 10 : 30, edgeSep: large ? 5 : 10,
+    rankSep: large ? 40 : 80, padding: 30,
   }).run();
 
-  // Store base positions for spacing sliders
-  basePositions = {};
-  cy.nodes().forEach(n => {
-    const pos = n.position();
-    basePositions[n.id()] = { x: pos.x, y: pos.y };
-  });
-
-  // Reset sliders
+  // Reset spacing sliders
   document.getElementById('x-spacing').value = 1.0;
   document.getElementById('y-spacing').value = 1.0;
+  basePositions = {};
+  cy.nodes().forEach(n => { const p = n.position(); basePositions[n.id()] = { x: p.x, y: p.y }; });
 
   cy.fit(undefined, 40);
 }
+
+let basePositions = {};
 
 function applySpacing() {
   const sx = parseFloat(document.getElementById('x-spacing').value);
@@ -612,37 +508,193 @@ function applySpacing() {
   cy.batch(() => {
     cy.nodes().forEach(n => {
       const base = basePositions[n.id()];
-      if (base) {
-        n.position({ x: base.x * sx, y: base.y * sy });
-      }
+      if (base) n.position({ x: base.x * sx, y: base.y * sy });
     });
   });
 }
 
-function clearSelection() {
+// ── Show nodes (adds to visible set + re-renders) ──────────────────
+function showNodes(uids) {
+  let changed = false;
+  for (const u of uids) {
+    const s = String(u);
+    if (!visibleUids.has(s)) { visibleUids.add(s); changed = true; }
+  }
+  if (changed) renderVisible();
+}
+
+function showAllGraph() {
+  if (!graphData) return;
+  visibleUids = new Set(graphData.nodes.map(n => String(n.uid)));
+  renderVisible();
+  updatePrompt();
+}
+
+function clearGraph() {
+  visibleUids = new Set();
+  cy.elements().remove();
+  currentCpa = null;
+  currentAncestorUids = [];
+  currentAncestorEdges = [];
+  currentScopingUid = null;
+  updatePrompt();
+}
+
+function fitGraph() { cy.fit(undefined, 40); }
+
+// ── Graph loading ──────────────────────────────────────────────────
+async function loadGraph() {
+  showLoading('Loading graph...');
+  const resp = await fetch('/api/graph');
+  graphData = await resp.json();
+  buildAdjacency();
+  visibleUids = new Set();
+  cy.elements().remove();
+  hideLoading();
+  updatePrompt();
+}
+
+function updatePrompt() {
+  if (!graphData) {
+    document.getElementById('graph-prompt').innerHTML = 'Connect to Neo4j to start.';
+    return;
+  }
+  const count = graphData.nodes.length;
+  if (visibleUids.size > 0) {
+    document.getElementById('graph-prompt').innerHTML = `
+      Showing <strong>${visibleUids.size}</strong> of ${count} tasks.<br><br>
+      <strong>Left-click</strong> = select + CPA<br>
+      <strong>Right-click</strong> = expand / toggle done`;
+    return;
+  }
+  if (count <= 200) {
+    document.getElementById('graph-prompt').innerHTML = `
+      <strong>${count} tasks</strong> loaded.<br><br>
+      <button class="btn primary" onclick="showAllGraph()">Show entire graph</button><br><br>
+      Or search for a task above.`;
+  } else {
+    document.getElementById('graph-prompt').innerHTML = `
+      <strong>${count} tasks</strong> loaded.<br><br>
+      Graph is too large to show at once.<br>Search for a task above to start exploring.`;
+  }
+}
+
+// ── Search ─────────────────────────────────────────────────────────
+function onSearch() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const resultsEl = document.getElementById('search-results');
+  if (!q || !graphData) { resultsEl.classList.remove('show'); return; }
+
+  const matches = graphData.nodes.filter(n => n.name.toLowerCase().includes(q)).slice(0, 15);
+  if (matches.length === 0) { resultsEl.classList.remove('show'); return; }
+
+  resultsEl.innerHTML = matches.map(n =>
+    `<div class="search-result-item" onclick="pickSearchResult(${n.uid})">${n.name} <span style="color:var(--neo-muted);font-size:10px;">(${n.done ? 'Done' : n.duration + 'h'})</span></div>`
+  ).join('');
+  resultsEl.classList.add('show');
+}
+
+function pickSearchResult(uid) {
+  document.getElementById('search-results').classList.remove('show');
+  document.getElementById('search-input').value = '';
+  showNodes([uid]);
+  selectNode(uid);
+}
+
+// Close search results on click elsewhere
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-bar')) {
+    document.getElementById('search-results').classList.remove('show');
+  }
+});
+
+// ── Context menu ───────────────────────────────────────────────────
+function showCtxMenu(x, y, uid) {
+  ctxTargetUid = uid;
+  const menu = document.getElementById('ctx-menu');
+  const nm = nodeMap();
+  const node = nm[String(uid)];
+  const isDone = node && node.done;
+  document.getElementById('ctx-done').textContent = isDone
+    ? 'Mark Undone (+ descendants)'
+    : 'Mark Done (+ ancestors)';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.classList.add('show');
+}
+
+function hideCtxMenu() {
+  document.getElementById('ctx-menu').classList.remove('show');
+  ctxTargetUid = null;
+}
+
+document.addEventListener('click', hideCtxMenu);
+
+function ctxExpandUpstream() {
+  if (ctxTargetUid == null) return;
+  const upstream = getUpstream(ctxTargetUid);
+  showNodes(upstream);
+  hideCtxMenu();
+}
+
+function ctxExpandDownstream() {
+  if (ctxTargetUid == null) return;
+  const downstream = getDownstream(ctxTargetUid);
+  showNodes(downstream);
+  hideCtxMenu();
+}
+
+function ctxComputeCPA() {
+  if (ctxTargetUid == null) return;
+  selectNode(ctxTargetUid);
+  hideCtxMenu();
+}
+
+async function ctxToggleDone() {
+  if (ctxTargetUid == null) return;
+  const nm = nodeMap();
+  const node = nm[String(ctxTargetUid)];
+  const markDone = !(node && node.done);
+  const endpoint = markDone ? `/api/complete/${ctxTargetUid}` : `/api/uncomplete/${ctxTargetUid}`;
+  await fetch(endpoint, { method: 'POST' });
+  // Refresh data
+  const resp = await fetch('/api/graph');
+  graphData = await resp.json();
+  buildAdjacency();
+  // Update visible nodes
+  const doneSet = new Set(graphData.nodes.filter(n => n.done).map(n => String(n.uid)));
+  cy.nodes().forEach(n => {
+    if (doneSet.has(n.id())) n.data('done', true);
+    else n.removeData('done');
+  });
+  hideCtxMenu();
+  clearCpaHighlights();
+}
+
+// ── Node selection + CPA ───────────────────────────────────────────
+function clearCpaHighlights() {
   cy.elements().removeClass('selected-node critical-path frontier-node critical-edge ancestor-node ancestor-edge dimmed');
   currentCpa = null;
   currentAncestorUids = [];
   currentAncestorEdges = [];
   currentScopingUid = null;
-  document.getElementById('node-info').innerHTML = `
-    <div class="info-empty">
-      Click on any node in the graph to see its details and compute critical paths.<br><br>
-      <strong>Left-click</strong> = select + CPA<br>
-      <strong>Right-click</strong> = toggle Done
-    </div>`;
-}
-
-function fitGraph() {
-  cy.fit(undefined, 40);
 }
 
 async function selectNode(uid) {
-  clearSelection();
-  const node = cy.getElementById(String(uid));
+  clearCpaHighlights();
+  const uidStr = String(uid);
+
+  // Ensure node is visible
+  if (!visibleUids.has(uidStr)) {
+    showNodes([uid]);
+  }
+
+  const node = cy.getElementById(uidStr);
   node.addClass('selected-node');
 
-  const data = node.data();
+  const nm = nodeMap();
+  const data = nm[uidStr];
+  if (!data) return;
   const isDone = !!data.done;
 
   let infoHtml = `
@@ -650,16 +702,10 @@ async function selectNode(uid) {
       <h3>${data.name} <span class="badge ${isDone ? 'badge-done' : 'badge-pending'}">${isDone ? 'DONE' : 'PENDING'}</span></h3>
       <div class="detail"><strong>UID:</strong> ${data.uid}</div>
       <div class="detail"><strong>Duration:</strong> ${data.duration}h</div>
-      <div style="margin-top:10px; display:flex; gap:6px;">
-        ${isDone
-          ? `<button class="btn" onclick="toggleDone(${uid}, false)">Mark Undone (+ descendants)</button>`
-          : `<button class="btn primary" onclick="toggleDone(${uid}, true)">Mark Done (+ ancestors)</button>`
-        }
-      </div>
     </div>`;
 
   if (isDone) {
-    infoHtml += `<div class="info-card"><h3>CPA</h3><div class="detail">This task is already completed. No critical path to compute.</div></div>`;
+    infoHtml += `<div class="info-card"><h3>CPA</h3><div class="detail">This task is already completed.</div></div>`;
     document.getElementById('node-info').innerHTML = infoHtml;
     return;
   }
@@ -676,23 +722,23 @@ async function selectNode(uid) {
     currentScopingUid = uid;
 
     if (currentCpa.length === 0) {
-      document.getElementById('cpa-loading').innerHTML = 'No pending upstream paths (this is a frontier node).';
+      document.getElementById('cpa-loading').innerHTML = 'No pending upstream paths (frontier node).';
       return;
     }
 
-    // Dim everything, then un-dim path nodes
+    // Auto-reveal all CPA-relevant nodes
+    const toReveal = new Set(currentAncestorUids);
+    for (const p of currentCpa) for (const u of p.pathUids) toReveal.add(String(u));
+    showNodes(toReveal);
+
+    // Now apply highlighting
     cy.elements().addClass('dimmed');
-    node.removeClass('dimmed').addClass('selected-node');
+    cy.getElementById(uidStr).removeClass('dimmed').addClass('selected-node');
 
     const allPathUids = new Set();
-    for (const p of currentCpa) {
-      for (const u of p.pathUids) allPathUids.add(String(u));
-    }
-    for (const uidStr of allPathUids) {
-      cy.getElementById(uidStr).removeClass('dimmed');
-    }
+    for (const p of currentCpa) for (const u of p.pathUids) allPathUids.add(String(u));
+    for (const u of allPathUids) cy.getElementById(u).removeClass('dimmed');
 
-    // Highlight first (longest) path by default
     highlightPath(0);
 
     let pathsHtml = `<button class="btn" onclick="highlightAllPaths()" id="btn-all" style="width:100%;margin-bottom:10px;">Show All Paths + Upstream Subgraph</button>`;
@@ -724,120 +770,66 @@ function findEdge(a, b) {
 }
 
 function highlightPath(index) {
-  // Reset path + ancestor highlights (keep dimming)
   cy.elements().removeClass('critical-path frontier-node critical-edge ancestor-node ancestor-edge');
-
-  // Re-dim everything, un-dim all path nodes across all paths
   cy.elements().addClass('dimmed');
+
   const scopingNode = cy.getElementById(String(currentScopingUid));
   scopingNode.removeClass('dimmed').addClass('selected-node');
 
   const allPathUids = new Set();
-  if (currentCpa) {
-    for (const p of currentCpa) {
-      for (const u of p.pathUids) allPathUids.add(String(u));
-    }
-  }
-  for (const uid of allPathUids) {
-    cy.getElementById(uid).removeClass('dimmed');
-  }
+  if (currentCpa) for (const p of currentCpa) for (const u of p.pathUids) allPathUids.add(String(u));
+  for (const uid of allPathUids) cy.getElementById(uid).removeClass('dimmed');
 
-  // Highlight the selected path
   const path = currentCpa[index];
   const pathUids = path.pathUids.map(String);
 
-  for (const uid of pathUids) {
-    cy.getElementById(uid).removeClass('dimmed').addClass('critical-path');
-  }
-
-  // Scoping node keeps its gold style
+  for (const uid of pathUids) cy.getElementById(uid).removeClass('dimmed').addClass('critical-path');
   scopingNode.removeClass('critical-path').addClass('selected-node');
+  cy.getElementById(String(path.frontierUid)).removeClass('critical-path').addClass('frontier-node');
 
-  // Frontier
-  const frontierUid = String(path.frontierUid);
-  cy.getElementById(frontierUid).removeClass('critical-path').addClass('frontier-node');
-
-  // Edges along path
   for (let i = 0; i < pathUids.length - 1; i++) {
     const edge = findEdge(pathUids[i], pathUids[i+1]);
     if (edge.length) edge.removeClass('dimmed').addClass('critical-edge');
   }
 
-  // Update sidebar active state
-  document.querySelectorAll('.path-item').forEach((el, i) => {
-    el.classList.toggle('active', i === index);
-  });
+  document.querySelectorAll('.path-item').forEach((el, i) => el.classList.toggle('active', i === index));
   const btnAll = document.getElementById('btn-all');
   if (btnAll) btnAll.classList.remove('primary');
 }
 
 function highlightAllPaths() {
-  // Reset
   cy.elements().removeClass('critical-path frontier-node critical-edge ancestor-node ancestor-edge');
   cy.elements().addClass('dimmed');
 
   const scopingNode = cy.getElementById(String(currentScopingUid));
   scopingNode.removeClass('dimmed').addClass('selected-node');
 
-  // 1. Show ancestor subgraph softly
-  const ancestorSet = new Set(currentAncestorUids);
-  for (const uid of currentAncestorUids) {
-    cy.getElementById(uid).removeClass('dimmed').addClass('ancestor-node');
-  }
+  for (const uid of currentAncestorUids) cy.getElementById(uid).removeClass('dimmed').addClass('ancestor-node');
   for (const [src, tgt] of currentAncestorEdges) {
     const edge = findEdge(String(src), String(tgt));
     if (edge.length) edge.removeClass('dimmed').addClass('ancestor-edge');
   }
 
-  // 2. Overlay all critical paths in red
-  const allPathUids = new Set();
   const allFrontierUids = new Set();
   for (const p of currentCpa) {
-    for (const u of p.pathUids) allPathUids.add(String(u));
     allFrontierUids.add(String(p.frontierUid));
-
     const pathUids = p.pathUids.map(String);
+    for (const uid of pathUids) cy.getElementById(uid).removeClass('ancestor-node dimmed').addClass('critical-path');
     for (let i = 0; i < pathUids.length - 1; i++) {
       const edge = findEdge(pathUids[i], pathUids[i+1]);
       if (edge.length) edge.removeClass('ancestor-edge dimmed').addClass('critical-edge');
     }
   }
 
-  for (const uid of allPathUids) {
-    cy.getElementById(uid).removeClass('ancestor-node dimmed').addClass('critical-path');
-  }
-
-  // Scoping node gold
   scopingNode.removeClass('critical-path ancestor-node').addClass('selected-node');
+  for (const uid of allFrontierUids) cy.getElementById(uid).removeClass('critical-path').addClass('frontier-node');
 
-  // Frontiers cyan
-  for (const uid of allFrontierUids) {
-    cy.getElementById(uid).removeClass('critical-path').addClass('frontier-node');
-  }
-
-  // Update sidebar
   document.querySelectorAll('.path-item').forEach(el => el.classList.remove('active'));
   const btnAll = document.getElementById('btn-all');
   if (btnAll) btnAll.classList.add('primary');
 }
 
-async function toggleDone(uid, markDone) {
-  const endpoint = markDone ? `/api/complete/${uid}` : `/api/uncomplete/${uid}`;
-  await fetch(endpoint, { method: 'POST' });
-  // Refresh done states without re-running layout
-  const resp = await fetch('/api/graph');
-  graphData = await resp.json();
-  const doneSet = new Set(graphData.nodes.filter(n => n.done).map(n => String(n.uid)));
-  cy.nodes().forEach(n => {
-    if (doneSet.has(n.id())) {
-      n.data('done', true);
-    } else {
-      n.removeData('done');
-    }
-  });
-  clearSelection();
-}
-
+// ── Dataset reset ──────────────────────────────────────────────────
 async function resetDataset() {
   showLoading('Resetting to 60-task dataset...');
   try {
@@ -845,7 +837,6 @@ async function resetDataset() {
     await loadGraph();
   } catch (e) { alert('Error: ' + e.message); }
   hideLoading();
-  clearSelection();
 }
 
 async function resetLargeDataset() {
@@ -856,67 +847,51 @@ async function resetLargeDataset() {
   showLoading(`Generating ${layers} layers x ~${width} width, density=${density}...`);
   try {
     const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&density=${density}&seed=${seed}&done=0.3`, { method: 'POST' });
-    if (!resp.ok) {
-      const err = await resp.text();
-      hideLoading();
-      alert('Server error: ' + err);
-      return;
-    }
+    if (!resp.ok) { hideLoading(); alert('Server error: ' + await resp.text()); return; }
     const result = await resp.json();
     showLoading(`Loading ${result.nodes} nodes, ${result.edges} edges...`);
     await loadGraph();
     hideLoading();
-    clearSelection();
   } catch (e) { hideLoading(); alert('Error: ' + e.message); }
 }
 
-// Events
-cy.on('tap', 'node', (evt) => {
-  selectNode(Number(evt.target.data('uid')));
-});
+// ── Events ─────────────────────────────────────────────────────────
+cy.on('tap', 'node', (evt) => selectNode(Number(evt.target.data('uid'))));
 
 cy.on('cxttap', 'node', (evt) => {
   evt.originalEvent.preventDefault();
-  const data = evt.target.data();
-  toggleDone(data.uid, !data.done);
+  const uid = evt.target.data('uid');
+  showCtxMenu(evt.originalEvent.clientX, evt.originalEvent.clientY, uid);
 });
 
 cy.on('tap', (evt) => {
-  if (evt.target === cy) clearSelection();
+  if (evt.target === cy) {
+    clearCpaHighlights();
+    updatePrompt();
+  }
 });
 
-// Connect dialog
+// ── Connect dialog ─────────────────────────────────────────────────
 async function doConnect() {
   const uri = document.getElementById('conn-uri').value.trim();
   const user = document.getElementById('conn-user').value.trim();
   const password = document.getElementById('conn-password').value;
   const errEl = document.getElementById('conn-error');
   errEl.textContent = '';
-
   try {
     const resp = await fetch('/api/connect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uri, user, password }),
     });
-    if (!resp.ok) {
-      const data = await resp.json();
-      errEl.textContent = data.detail || 'Connection failed';
-      return;
-    }
+    if (!resp.ok) { errEl.textContent = (await resp.json()).detail || 'Connection failed'; return; }
     document.getElementById('connect-overlay').classList.add('hidden');
     loadGraph();
-  } catch (e) {
-    errEl.textContent = e.message;
-  }
+  } catch (e) { errEl.textContent = e.message; }
 }
 
-// Allow Enter key in connect form
-document.getElementById('conn-password').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') doConnect();
-});
+document.getElementById('conn-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doConnect(); });
 
-// Init: check if already connected
+// ── Init ───────────────────────────────────────────────────────────
 (async () => {
   const resp = await fetch('/api/status');
   const data = await resp.json();
