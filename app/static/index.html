@@ -827,8 +827,15 @@ async function selectNode(uid) {
 
     const cpaCard = document.getElementById('cpa-loading');
     const logo = `<img src="/static/neo4j-logo.png" style="height:14px;">`;
-    const badge = result.elapsed_ms != null ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:800;color:#0A1520;background:linear-gradient(135deg,#8FE3E8,#5DB3BF);padding:4px 12px;border-radius:12px;letter-spacing:0.5px;box-shadow:0 0 12px rgba(143,227,232,0.4);">${logo} ${result.elapsed_ms} ms</span>` : '';
-    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3 style="flex-wrap:wrap;justify-content:space-between;">Critical Paths (${currentCpa.length}) ${badge}</h3>${pathsHtml}`;
+    const t = result.timings || {};
+    const badge = t.total != null ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:800;color:#0A1520;background:linear-gradient(135deg,#8FE3E8,#5DB3BF);padding:4px 12px;border-radius:12px;letter-spacing:0.5px;box-shadow:0 0 12px rgba(143,227,232,0.4);">${logo} ${t.total} ms</span>` : '';
+    const breakdown = t.total != null ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;margin-bottom:4px;font-size:10px;color:var(--neo-muted);">
+      <span>Scope+Project <strong style="color:var(--neo-text)">${t.scope_split_project} ms</strong></span>
+      <span>LongestPath <strong style="color:var(--neo-text)">${t.longest_path} ms</strong></span>
+      <span>Drop <strong style="color:var(--neo-text)">${t.drop_projection} ms</strong></span>
+      <span>Ancestors <strong style="color:var(--neo-text)">${t.ancestor_subgraph} ms</strong></span>
+    </div>` : '';
+    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3 style="flex-wrap:wrap;justify-content:space-between;">Critical Paths (${currentCpa.length}) ${badge}</h3>${breakdown}${pathsHtml}`;
   } catch (e) {
     const cpaCard = document.getElementById('cpa-loading');
     if (cpaCard) cpaCard.innerHTML = `Error: ${e.message}`;

@@ -233,6 +233,7 @@ def compute_cpa(uid: int):
     """Compute CPA for a given scoping node. Returns longest paths to frontier nodes."""
     driver = get_driver()
     graph_name = f"cpa_{uid}"
+    timings = {}
     t0 = time.perf_counter()
     with driver.session() as session:
         # Drop existing projection if any
@@ -242,6 +243,7 @@ def compute_cpa(uid: int):
             pass
 
         # Project scoped subgraph with virtual node splitting
+        t1 = time.perf_counter()
         proj = session.run("""CYPHER 25
             MATCH (scopingNode:Task {uid: $uid})
             CALL apoc.path.subgraphNodes(scopingNode, {
@@ -273,10 +275,12 @@ def compute_cpa(uid: int):
             RETURN g.graphName AS graph, g.nodeCount AS nodes, g.relationshipCount AS rels
         """, uid=uid, graph_name=graph_name)
         proj_record = proj.single()
+        timings["scope_split_project"] = round((time.perf_counter() - t1) * 1000, 1)
         if proj_record is None:
             raise HTTPException(status_code=400, detail="Node is Done or not found")
 
         # Run longestPath
+        t2 = time.perf_counter()
         result = session.run("""CYPHER 25
             CALL gds.dag.longestPath.stream($graph_name, {
                 relationshipWeightProperty: "duration"
@@ -316,11 +320,15 @@ def compute_cpa(uid: int):
                 "pathUids": record["pathUids"],
                 "pathNames": record["pathNames"],
             })
+        timings["longest_path"] = round((time.perf_counter() - t2) * 1000, 1)
 
         # Cleanup
+        t3 = time.perf_counter()
         session.run("CALL gds.graph.drop($name, false)", name=graph_name)
+        timings["drop_projection"] = round((time.perf_counter() - t3) * 1000, 1)
 
         # Collect full ancestor subgraph (non-Done) for highlighting
+        t4 = time.perf_counter()
         ancestor_result = session.run("""CYPHER 25
             MATCH (scopingNode:Task {uid: $uid})
             CALL apoc.path.subgraphNodes(scopingNode, {
@@ -340,9 +348,10 @@ def compute_cpa(uid: int):
         anc = ancestor_result.single()
         ancestor_uids = anc["ancestorUids"] if anc else []
         ancestor_edges = [[e[0], e[1]] for e in (anc["ancestorEdges"] if anc else []) if e[0] is not None]
+        timings["ancestor_subgraph"] = round((time.perf_counter() - t4) * 1000, 1)
 
-        elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
-        return {"paths": paths, "ancestorUids": ancestor_uids, "ancestorEdges": ancestor_edges, "elapsed_ms": elapsed_ms}
+        timings["total"] = round((time.perf_counter() - t0) * 1000, 1)
+        return {"paths": paths, "ancestorUids": ancestor_uids, "ancestorEdges": ancestor_edges, "timings": timings}
 
 
 @app.post("/api/reset")
