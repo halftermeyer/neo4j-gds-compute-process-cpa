@@ -841,7 +841,7 @@ async function selectNode(uid) {
           <strong style="color:var(--neo-text);margin-left:4px;">${s.ms} ms</strong>
           ${metricsStr ? `<span style="margin-left:6px;color:var(--neo-teal);">${metricsStr}</span>` : ''}
           <div id="step-detail-${i}" style="display:none;margin-top:6px;">
-            <pre style="background:var(--neo-bg);border:1px solid var(--neo-border);border-radius:6px;padding:8px 10px;font-size:9px;color:var(--neo-cyan);white-space:pre-wrap;word-break:break-all;overflow-x:auto;line-height:1.4;">${s.cypher}</pre>
+            <pre style="background:var(--neo-bg);border:1px solid var(--neo-border);border-radius:6px;padding:8px 10px;font-size:9px;color:var(--neo-cyan);white-space:pre-wrap;word-break:break-all;overflow-x:auto;line-height:1.4;">${escHtml(s.cypher)}</pre>
           </div>
         </div>`;
       }
@@ -852,6 +852,10 @@ async function selectNode(uid) {
     const cpaCard = document.getElementById('cpa-loading');
     if (cpaCard) cpaCard.innerHTML = `Error: ${e.message}`;
   }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function toggleStepDetail(i) {
