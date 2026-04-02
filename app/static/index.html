@@ -767,9 +767,9 @@ async function selectNode(uid) {
     pathsHtml += '</ul>';
 
     const cpaCard = document.getElementById('cpa-loading');
-    const elapsed = result.elapsed_ms != null ? `<span style="font-size:16px;font-weight:800;color:#0A1520;background:linear-gradient(135deg,#8FE3E8,#5DB3BF);padding:4px 12px;border-radius:12px;letter-spacing:0.5px;box-shadow:0 0 12px rgba(143,227,232,0.4);">${result.elapsed_ms} ms</span>` : '';
-    const logo = `<img src="/static/neo4j-logo.png" style="height:16px;filter:brightness(0) invert(1);opacity:0.7;">`;
-    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3 style="flex-wrap:wrap;justify-content:space-between;">Critical Paths (${currentCpa.length}) <span style="display:flex;align-items:center;gap:6px;">${elapsed} ${logo}</span></h3>${pathsHtml}`;
+    const logo = `<img src="/static/neo4j-logo.png" style="height:14px;">`;
+    const badge = result.elapsed_ms != null ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:800;color:#0A1520;background:linear-gradient(135deg,#8FE3E8,#5DB3BF);padding:4px 12px;border-radius:12px;letter-spacing:0.5px;box-shadow:0 0 12px rgba(143,227,232,0.4);">${logo} ${result.elapsed_ms} ms</span>` : '';
+    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3 style="flex-wrap:wrap;justify-content:space-between;">Critical Paths (${currentCpa.length}) ${badge}</h3>${pathsHtml}`;
   } catch (e) {
     const cpaCard = document.getElementById('cpa-loading');
     if (cpaCard) cpaCard.innerHTML = `Error: ${e.message}`;
