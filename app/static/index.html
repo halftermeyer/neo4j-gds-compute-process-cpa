@@ -1036,10 +1036,11 @@ document.getElementById('conn-password').addEventListener('keydown', (e) => { if
 const darkStyles = {
   node:          { 'background-color': '#1A3A5C', 'border-color': '#4A9FD9', 'color': '#B0D4F1' },
   'node[done]':  { 'background-color': '#0D2818', 'border-color': '#2D8B4E', 'color': '#4CAF50' },
+  'node.selected-node': { 'background-color': '#FFA901', 'border-color': '#FFD54F', 'border-width': 3, 'color': '#FFF8E1' },
   edge:          { 'line-color': '#1E3A50', 'target-arrow-color': '#1E3A50' },
   'edge.critical-edge': { 'width': 3, 'line-color': '#FF6B4A', 'target-arrow-color': '#FF6B4A' },
   'node.critical-path': { 'background-color': '#6B2010', 'border-color': '#FF6B4A', 'border-width': 3, 'color': '#FFAB91' },
-  'node.frontier-node': { 'background-color': '#0A3A4A', 'border-color': '#8FE3E8', 'color': '#B2EBF2' },
+  'node.frontier-node': { 'background-color': '#0A3A4A', 'border-color': '#8FE3E8', 'border-width': 3, 'color': '#B2EBF2' },
   'node.ancestor-node': { 'background-color': '#0F2A3D', 'border-color': '#3A7A9A', 'color': '#6AAABB' },
   'edge.ancestor-edge': { 'line-color': '#2A5A70', 'target-arrow-color': '#2A5A70' },
   'node.dimmed':        { 'opacity': 0.08 },
@@ -1049,6 +1050,7 @@ const darkStyles = {
 const lightStyles = {
   node:          { 'background-color': '#E8F3F8', 'border-color': '#0A6190', 'color': '#014063' },
   'node[done]':  { 'background-color': '#DFF5E3', 'border-color': '#145439', 'color': '#145439' },
+  'node.selected-node': { 'background-color': '#FFA901', 'border-color': '#C07A00', 'border-width': 4, 'color': '#4A2D00' },
   edge:          { 'line-color': '#B0BEC5', 'target-arrow-color': '#B0BEC5' },
   'edge.critical-edge': { 'width': 5, 'line-color': '#FF0000', 'target-arrow-color': '#FF0000' },
   'node.critical-path': { 'background-color': '#FF0000', 'border-color': '#AA0000', 'border-width': 4, 'color': '#FFFFFF' },
