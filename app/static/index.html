@@ -767,8 +767,9 @@ async function selectNode(uid) {
     pathsHtml += '</ul>';
 
     const cpaCard = document.getElementById('cpa-loading');
-    const elapsed = result.elapsed_ms != null ? `<span style="float:right;font-size:11px;font-weight:700;color:#0A1520;background:var(--neo-cyan);padding:2px 8px;border-radius:10px;">${result.elapsed_ms} ms</span>` : '';
-    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3>Critical Paths (${currentCpa.length}) ${elapsed}</h3>${pathsHtml}`;
+    const elapsed = result.elapsed_ms != null ? `<span style="font-size:11px;font-weight:700;color:#0A1520;background:var(--neo-cyan);padding:2px 8px;border-radius:10px;">${result.elapsed_ms} ms</span>` : '';
+    const poweredBy = `<div style="display:flex;align-items:center;gap:6px;margin-top:8px;"><img src="/static/neo4j-logo.png" style="height:20px;"></div>`;
+    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3 style="flex-wrap:wrap;">Critical Paths (${currentCpa.length}) ${elapsed}</h3>${poweredBy}${pathsHtml}`;
   } catch (e) {
     const cpaCard = document.getElementById('cpa-loading');
     if (cpaCard) cpaCard.innerHTML = `Error: ${e.message}`;
