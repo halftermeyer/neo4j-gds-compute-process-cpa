@@ -477,6 +477,9 @@ function mergeData(nodes, edges) {
 }
 
 function relayout() {
+  // Reset positions to force dagre to recompute
+  cy.nodes().forEach(n => n.position({ x: 0, y: 0 }));
+
   const count = cy.nodes().length;
   const large = count > 200;
   cy.layout({
