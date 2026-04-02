@@ -739,14 +739,35 @@ async function selectNode(uid) {
     for (const p of currentCpa) for (const u of p.pathUids) toReveal.add(String(u));
     const missing = [...toReveal].filter(u => !cy.getElementById(u).length);
     if (missing.length > 0) {
-      // Fetch missing nodes via expand
       for (const uid of missing) {
         const resp = await fetch(`/api/expand/${uid}?direction=both`);
         const d = await resp.json();
         mergeData(d.nodes, d.edges);
       }
-      relayout();
     }
+
+    // Ensure edges from ancestor subgraph + paths exist in cytoscape
+    const cpaEdges = [];
+    for (const [src, tgt] of currentAncestorEdges) {
+      cpaEdges.push({ source: src, target: tgt });
+    }
+    for (const p of currentCpa) {
+      const uids = p.pathUids;
+      for (let i = 0; i < uids.length - 1; i++) {
+        cpaEdges.push({ source: uids[i], target: uids[i+1] });
+        cpaEdges.push({ source: uids[i+1], target: uids[i] }); // try both directions
+      }
+    }
+    for (const e of cpaEdges) {
+      const s = String(e.source), t = String(e.target);
+      const edgeId = `e_${s}_${t}`;
+      if (cy.getElementById(s).length && cy.getElementById(t).length && !cy.getElementById(edgeId).length) {
+        knownEdges.add(`${s}_${t}`);
+        cy.add({ group: 'edges', data: { id: edgeId, source: s, target: t } });
+      }
+    }
+
+    if (missing.length > 0) relayout();
 
     // Now apply highlighting
     cy.elements().addClass('dimmed');
