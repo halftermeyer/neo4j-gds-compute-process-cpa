@@ -393,7 +393,7 @@
   <div class="legend-item"><div class="legend-dot" style="background:#FFA901;border-color:#FFD54F"></div> Selected / scoping node</div>
   <div class="legend-item"><div class="legend-dot" style="background:#6B2010;border-color:#FF6B4A"></div> Critical path</div>
   <div class="legend-item"><div class="legend-dot" style="background:#0A3A4A;border-color:#8FE3E8"></div> Frontier node</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#0E1A26;border-color:#2A4A6B"></div> Upstream subgraph</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#0F2A3D;border-color:#3A7A9A"></div> Upstream subgraph</div>
 </div>
 
 <div class="loading-overlay" id="loading">Computing...</div>
@@ -488,21 +488,21 @@ const cy = cytoscape({
     {
       selector: 'node.ancestor-node',
       style: {
-        'background-color': '#0E1A26',
-        'border-color': '#2A4A6B',
+        'background-color': '#0F2A3D',
+        'border-color': '#3A7A9A',
         'border-width': 1.5,
-        'color': '#5A8AAA',
-        'opacity': 0.35,
+        'color': '#6AAABB',
+        'opacity': 0.6,
         'z-index': 5,
       }
     },
     {
       selector: 'edge.ancestor-edge',
       style: {
-        'width': 1,
-        'line-color': '#1A3050',
-        'target-arrow-color': '#1A3050',
-        'opacity': 0.3,
+        'width': 1.5,
+        'line-color': '#2A5A70',
+        'target-arrow-color': '#2A5A70',
+        'opacity': 0.5,
         'z-index': 5,
       }
     },
