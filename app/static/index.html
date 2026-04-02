@@ -827,19 +827,36 @@ async function selectNode(uid) {
 
     const cpaCard = document.getElementById('cpa-loading');
     const logo = `<img src="/static/neo4j-logo.png" style="height:14px;">`;
-    const t = result.timings || {};
-    const badge = t.total != null ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:800;color:#0A1520;background:linear-gradient(135deg,#8FE3E8,#5DB3BF);padding:4px 12px;border-radius:12px;letter-spacing:0.5px;box-shadow:0 0 12px rgba(143,227,232,0.4);">${logo} ${t.total} ms</span>` : '';
-    const breakdown = t.total != null ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;margin-bottom:4px;font-size:10px;color:var(--neo-muted);">
-      <span>Scope+Project <strong style="color:var(--neo-text)">${t.scope_split_project} ms</strong></span>
-      <span>LongestPath <strong style="color:var(--neo-text)">${t.longest_path} ms</strong></span>
-      <span>Drop <strong style="color:var(--neo-text)">${t.drop_projection} ms</strong></span>
-      <span>Highlighting query <strong style="color:var(--neo-text)">${t.ancestor_subgraph} ms</strong></span>
-    </div>` : '';
-    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3 style="flex-wrap:wrap;justify-content:space-between;">Critical Paths (${currentCpa.length}) ${badge}</h3>${breakdown}${pathsHtml}`;
+    const totalMs = result.total_ms;
+    const cpaSteps = result.steps || [];
+    const badge = totalMs != null ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:800;color:#0A1520;background:linear-gradient(135deg,#8FE3E8,#5DB3BF);padding:4px 12px;border-radius:12px;letter-spacing:0.5px;box-shadow:0 0 12px rgba(143,227,232,0.4);">${logo} ${totalMs} ms</span>` : '';
+    let stepsHtml = '';
+    if (cpaSteps.length > 0) {
+      stepsHtml = '<div style="margin-top:6px;margin-bottom:4px;">';
+      for (let i = 0; i < cpaSteps.length; i++) {
+        const s = cpaSteps[i];
+        const metricsStr = Object.entries(s.metrics).map(([k,v]) => `${k}: ${v}`).join(', ');
+        stepsHtml += `<div class="step-item" onclick="toggleStepDetail(${i})" style="cursor:pointer;padding:4px 0;font-size:10px;color:var(--neo-muted);border-bottom:1px solid var(--neo-border);">
+          <span>${s.name}</span>
+          <strong style="color:var(--neo-text);margin-left:4px;">${s.ms} ms</strong>
+          ${metricsStr ? `<span style="margin-left:6px;color:var(--neo-teal);">${metricsStr}</span>` : ''}
+          <div id="step-detail-${i}" style="display:none;margin-top:6px;">
+            <pre style="background:var(--neo-bg);border:1px solid var(--neo-border);border-radius:6px;padding:8px 10px;font-size:9px;color:var(--neo-cyan);white-space:pre-wrap;word-break:break-all;overflow-x:auto;line-height:1.4;">${s.cypher}</pre>
+          </div>
+        </div>`;
+      }
+      stepsHtml += '</div>';
+    }
+    if (cpaCard) cpaCard.parentElement.innerHTML = `<h3 style="flex-wrap:wrap;justify-content:space-between;">Critical Paths (${currentCpa.length}) ${badge}</h3>${stepsHtml}${pathsHtml}`;
   } catch (e) {
     const cpaCard = document.getElementById('cpa-loading');
     if (cpaCard) cpaCard.innerHTML = `Error: ${e.message}`;
   }
+}
+
+function toggleStepDetail(i) {
+  const el = document.getElementById(`step-detail-${i}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 function findEdge(a, b) {

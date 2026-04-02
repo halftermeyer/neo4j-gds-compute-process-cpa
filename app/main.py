@@ -233,7 +233,7 @@ def compute_cpa(uid: int):
     """Compute CPA for a given scoping node. Returns longest paths to frontier nodes."""
     driver = get_driver()
     graph_name = f"cpa_{uid}"
-    timings = {}
+    steps = []
     t0 = time.perf_counter()
     with driver.session() as session:
         # Drop existing projection if any
@@ -242,74 +242,75 @@ def compute_cpa(uid: int):
         except Exception:
             pass
 
-        # Project scoped subgraph with virtual node splitting
+        # Step 1: Scope + split + project
+        q1 = """CYPHER 25
+MATCH (scopingNode:Task {uid: $uid})
+CALL apoc.path.subgraphNodes(scopingNode, {
+    relationshipFilter: "<PRECEDES",
+    minLevel: 0
+})
+YIELD node AS n
+FILTER NOT n:Done
+OPTIONAL MATCH (n)<-[:PRECEDES]-(upstream:!Done)
+WITH
+    n, upstream,
+    2 * n.uid AS n_in,
+    2 * n.uid + 1 AS n_out,
+    2 * upstream.uid + 1 AS upstream_out,
+    n.duration AS weight
+CALL (*) {
+    RETURN n_in AS source, n_out AS target, weight AS w
+    UNION
+    WITH upstream_out WHERE upstream_out IS NOT NULL
+    RETURN upstream_out AS source, n_in AS target, 0.0 AS w
+}
+WITH DISTINCT source, target, w
+WITH gds.graph.project(
+    $graph_name, target, source,
+    { relationshipProperties: { duration: w } }
+) AS g
+RETURN g.graphName AS graph, g.nodeCount AS nodes, g.relationshipCount AS rels"""
         t1 = time.perf_counter()
-        proj = session.run("""CYPHER 25
-            MATCH (scopingNode:Task {uid: $uid})
-            CALL apoc.path.subgraphNodes(scopingNode, {
-                relationshipFilter: "<PRECEDES",
-                minLevel: 0
-            })
-            YIELD node AS n
-            FILTER NOT n:Done
-            OPTIONAL MATCH (n)<-[:PRECEDES]-(upstream:!Done)
-            WITH
-                n, upstream,
-                2 * n.uid AS n_in,
-                2 * n.uid + 1 AS n_out,
-                2 * upstream.uid + 1 AS upstream_out,
-                n.duration AS weight
-            CALL (*) {
-                RETURN n_in AS source, n_out AS target, weight AS w
-                UNION
-                WITH upstream_out WHERE upstream_out IS NOT NULL
-                RETURN upstream_out AS source, n_in AS target, 0.0 AS w
-            }
-            WITH DISTINCT source, target, w
-            WITH gds.graph.project(
-                $graph_name,
-                target,
-                source,
-                { relationshipProperties: { duration: w } }
-            ) AS g
-            RETURN g.graphName AS graph, g.nodeCount AS nodes, g.relationshipCount AS rels
-        """, uid=uid, graph_name=graph_name)
+        proj = session.run(q1, uid=uid, graph_name=graph_name)
         proj_record = proj.single()
-        timings["scope_split_project"] = round((time.perf_counter() - t1) * 1000, 1)
+        steps.append({
+            "name": "Scope+Project",
+            "ms": round((time.perf_counter() - t1) * 1000, 1),
+            "cypher": q1.strip(),
+            "metrics": {"nodes": proj_record["nodes"], "rels": proj_record["rels"]} if proj_record else {},
+        })
         if proj_record is None:
             raise HTTPException(status_code=400, detail="Node is Done or not found")
 
-        # Run longestPath
+        # Step 2: LongestPath
+        q2 = """CYPHER 25
+CALL gds.dag.longestPath.stream($graph_name, {
+    relationshipWeightProperty: "duration"
+})
+YIELD sourceNode, targetNode, totalCost, nodeIds
+MATCH (source:Task {uid: sourceNode / 2})
+MATCH (frontier:Task {uid: targetNode / 2})
+WITH
+    targetNode, source, frontier, totalCost,
+    [id IN nodeIds WHERE id % 2 = 0 |
+        head(collect { MATCH (n:Task {uid: id / 2}) RETURN n.uid })
+    ] AS pathUids,
+    [id IN nodeIds WHERE id % 2 = 0 |
+        head(collect { MATCH (n:Task {uid: id / 2}) RETURN n.name })
+    ] AS pathNames
+FILTER targetNode % 2 = 0
+AND source.uid = $uid
+AND NOT EXISTS { (frontier)<-[:PRECEDES]-(upstream:!Done) }
+RETURN
+    source.name AS scopingNode,
+    frontier.name AS criticalFrontier,
+    frontier.uid AS frontierUid,
+    totalCost AS criticalPathDuration,
+    pathUids AS pathUids,
+    pathNames AS pathNames
+ORDER BY totalCost DESC"""
         t2 = time.perf_counter()
-        result = session.run("""CYPHER 25
-            CALL gds.dag.longestPath.stream($graph_name, {
-                relationshipWeightProperty: "duration"
-            })
-            YIELD sourceNode, targetNode, totalCost, nodeIds
-            MATCH (source:Task {uid: sourceNode / 2})
-            MATCH (frontier:Task {uid: targetNode / 2})
-            WITH
-                targetNode,
-                source, frontier, totalCost,
-                [id IN nodeIds WHERE id % 2 = 0 |
-                    head(collect { MATCH (n:Task {uid: id / 2}) RETURN n.uid })
-                ] AS pathUids,
-                [id IN nodeIds WHERE id % 2 = 0 |
-                    head(collect { MATCH (n:Task {uid: id / 2}) RETURN n.name })
-                ] AS pathNames
-            FILTER targetNode % 2 = 0
-            AND source.uid = $uid
-            AND NOT EXISTS { (frontier)<-[:PRECEDES]-(upstream:!Done) }
-            RETURN
-                source.name AS scopingNode,
-                frontier.name AS criticalFrontier,
-                frontier.uid AS frontierUid,
-                totalCost AS criticalPathDuration,
-                pathUids AS pathUids,
-                pathNames AS pathNames
-            ORDER BY totalCost DESC
-        """, graph_name=graph_name, uid=uid)
-
+        result = session.run(q2, graph_name=graph_name, uid=uid)
         paths = []
         for record in result:
             paths.append({
@@ -320,38 +321,55 @@ def compute_cpa(uid: int):
                 "pathUids": record["pathUids"],
                 "pathNames": record["pathNames"],
             })
-        timings["longest_path"] = round((time.perf_counter() - t2) * 1000, 1)
+        steps.append({
+            "name": "LongestPath",
+            "ms": round((time.perf_counter() - t2) * 1000, 1),
+            "cypher": q2.strip(),
+            "metrics": {"paths": len(paths)},
+        })
 
-        # Cleanup
+        # Step 3: Drop projection
+        q3 = "CALL gds.graph.drop($name, false)"
         t3 = time.perf_counter()
-        session.run("CALL gds.graph.drop($name, false)", name=graph_name)
-        timings["drop_projection"] = round((time.perf_counter() - t3) * 1000, 1)
+        session.run(q3, name=graph_name)
+        steps.append({
+            "name": "Drop",
+            "ms": round((time.perf_counter() - t3) * 1000, 1),
+            "cypher": q3.strip(),
+            "metrics": {},
+        })
 
-        # Collect full ancestor subgraph (non-Done) for highlighting
+        # Step 4: Highlighting query
+        q4 = """CYPHER 25
+MATCH (scopingNode:Task {uid: $uid})
+CALL apoc.path.subgraphNodes(scopingNode, {
+    relationshipFilter: "<PRECEDES",
+    minLevel: 0
+})
+YIELD node AS n
+WHERE NOT n:Done
+WITH collect(n.uid) AS ancestorUids
+UNWIND ancestorUids AS aUid
+MATCH (a:Task {uid: aUid})
+OPTIONAL MATCH (a)<-[:PRECEDES]-(b:Task&!Done)
+WHERE b.uid IN ancestorUids
+RETURN ancestorUids,
+       collect(DISTINCT [b.uid, a.uid]) AS ancestorEdges"""
         t4 = time.perf_counter()
-        ancestor_result = session.run("""CYPHER 25
-            MATCH (scopingNode:Task {uid: $uid})
-            CALL apoc.path.subgraphNodes(scopingNode, {
-                relationshipFilter: "<PRECEDES",
-                minLevel: 0
-            })
-            YIELD node AS n
-            WHERE NOT n:Done
-            WITH collect(n.uid) AS ancestorUids
-            UNWIND ancestorUids AS aUid
-            MATCH (a:Task {uid: aUid})
-            OPTIONAL MATCH (a)<-[:PRECEDES]-(b:Task&!Done)
-            WHERE b.uid IN ancestorUids
-            RETURN ancestorUids,
-                   collect(DISTINCT [b.uid, a.uid]) AS ancestorEdges
-        """, uid=uid)
+        ancestor_result = session.run(q4, uid=uid)
         anc = ancestor_result.single()
         ancestor_uids = anc["ancestorUids"] if anc else []
         ancestor_edges = [[e[0], e[1]] for e in (anc["ancestorEdges"] if anc else []) if e[0] is not None]
-        timings["ancestor_subgraph"] = round((time.perf_counter() - t4) * 1000, 1)
+        steps.append({
+            "name": "Highlighting query",
+            "ms": round((time.perf_counter() - t4) * 1000, 1),
+            "cypher": q4.strip(),
+            "metrics": {"ancestor_nodes": len(ancestor_uids), "ancestor_edges": len(ancestor_edges)},
+        })
 
-        timings["total"] = round((time.perf_counter() - t0) * 1000, 1)
-        return {"paths": paths, "ancestorUids": ancestor_uids, "ancestorEdges": ancestor_edges, "timings": timings}
+        total_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return {"paths": paths, "ancestorUids": ancestor_uids, "ancestorEdges": ancestor_edges,
+                "steps": steps, "total_ms": total_ms}
 
 
 @app.post("/api/reset")
