@@ -1,5 +1,5 @@
 // ── Clean slate ───────────────────────────────────────────────────
-MATCH (n) DETACH DELETE n;
+MATCH (n) CALL (n) {DETACH DELETE n} IN TRANSACTIONS OF 5000 ROWS;
 
 // ── Large realistic DAG: 60 tasks, ~80 edges ─────────────────────
 // Represents a batch risk computation pipeline with 4 phases:

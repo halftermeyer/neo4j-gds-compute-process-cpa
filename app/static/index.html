@@ -390,55 +390,16 @@ const cy = cytoscape({
 });
 
 // ── State ──────────────────────────────────────────────────────────
-let graphData = null;           // full graph from API
-let visibleUids = new Set();    // currently shown node UIDs (strings)
+let taskIndex = null;           // lightweight [{uid, name, done}] from /api/tasks
+let taskCount = 0;
+let knownNodes = {};            // uid(string) -> {uid, name, duration, done}
+let knownEdges = new Set();     // "src_tgt" strings
 let currentCpa = null;
 let currentAncestorUids = [];
 let currentAncestorEdges = [];
 let currentScopingUid = null;
-let ctxTargetUid = null;        // right-click target
-
-// ── Adjacency (built client-side from graphData.edges) ─────────────
-let childrenOf = {};  // uid -> [uid] (downstream via PRECEDES)
-let parentsOf = {};   // uid -> [uid] (upstream via PRECEDES)
-
-function buildAdjacency() {
-  childrenOf = {};
-  parentsOf = {};
-  if (!graphData) return;
-  for (const e of graphData.edges) {
-    const s = String(e.source), t = String(e.target);
-    if (!childrenOf[s]) childrenOf[s] = [];
-    childrenOf[s].push(t);
-    if (!parentsOf[t]) parentsOf[t] = [];
-    parentsOf[t].push(s);
-  }
-}
-
-function getUpstream(uid) {
-  // BFS upstream (parents)
-  const visited = new Set();
-  const queue = [String(uid)];
-  while (queue.length) {
-    const n = queue.shift();
-    if (visited.has(n)) continue;
-    visited.add(n);
-    for (const p of (parentsOf[n] || [])) queue.push(p);
-  }
-  return visited;
-}
-
-function getDownstream(uid) {
-  const visited = new Set();
-  const queue = [String(uid)];
-  while (queue.length) {
-    const n = queue.shift();
-    if (visited.has(n)) continue;
-    visited.add(n);
-    for (const c of (childrenOf[n] || [])) queue.push(c);
-  }
-  return visited;
-}
+let ctxTargetUid = null;
+let basePositions = {};
 
 // ── Helpers ────────────────────────────────────────────────────────
 function showLoading(msg) {
@@ -449,58 +410,83 @@ function showLoading(msg) {
 
 function hideLoading() { document.getElementById('loading').classList.remove('show'); }
 
-function nodeMap() {
-  const m = {};
-  if (graphData) for (const n of graphData.nodes) m[String(n.uid)] = n;
-  return m;
-}
+// ── Merge nodes/edges into local cache and cytoscape ───────────────
+function mergeData(nodes, edges) {
+  let changed = false;
+  const newNodeIds = [];
 
-// ── Render visible subgraph ────────────────────────────────────────
-function renderVisible() {
-  cy.elements().remove();
-  const elements = [];
-  const nm = nodeMap();
-
-  for (const uid of visibleUids) {
-    const node = nm[uid];
-    if (!node) continue;
-    const el = {
-      group: 'nodes',
-      data: {
-        id: uid, label: node.name.replace(/_/g, '\n'),
-        name: node.name, duration: node.duration, uid: node.uid,
-      }
-    };
-    if (node.done) el.data.done = true;
-    elements.push(el);
+  for (const n of nodes) {
+    const uid = String(n.uid);
+    if (!knownNodes[uid]) {
+      knownNodes[uid] = n;
+      newNodeIds.push(uid);
+      changed = true;
+    } else {
+      // Update done state
+      knownNodes[uid].done = n.done;
+    }
   }
 
-  for (const edge of graphData.edges) {
-    const s = String(edge.source), t = String(edge.target);
-    if (visibleUids.has(s) && visibleUids.has(t)) {
+  const newEdges = [];
+  for (const e of edges) {
+    const key = `${e.source}_${e.target}`;
+    if (!knownEdges.has(key)) {
+      knownEdges.add(key);
+      newEdges.push(e);
+      changed = true;
+    }
+  }
+
+  // Add new elements to cytoscape (don't re-render everything)
+  const elements = [];
+  for (const uid of newNodeIds) {
+    const n = knownNodes[uid];
+    const el = {
+      group: 'nodes',
+      data: { id: uid, label: n.name.replace(/_/g, '\n'), name: n.name, duration: n.duration, uid: n.uid }
+    };
+    if (n.done) el.data.done = true;
+    elements.push(el);
+  }
+  for (const e of newEdges) {
+    const s = String(e.source), t = String(e.target);
+    // Only add edge if both endpoints exist in cytoscape
+    if (knownNodes[s] && knownNodes[t] && cy.getElementById(s).length && cy.getElementById(t).length) {
       elements.push({ group: 'edges', data: { id: `e_${s}_${t}`, source: s, target: t } });
     }
   }
 
-  cy.add(elements);
+  if (elements.length > 0) {
+    cy.add(elements);
+  }
 
-  const large = visibleUids.size > 200;
+  // Also check for edges that can now be added (both endpoints present)
+  for (const key of knownEdges) {
+    const [s, t] = key.split('_');
+    const edgeId = `e_${s}_${t}`;
+    if (cy.getElementById(s).length && cy.getElementById(t).length && !cy.getElementById(edgeId).length) {
+      cy.add({ group: 'edges', data: { id: edgeId, source: s, target: t } });
+    }
+  }
+
+  return changed;
+}
+
+function relayout() {
+  const count = cy.nodes().length;
+  const large = count > 200;
   cy.layout({
     name: 'dagre', rankDir: 'LR',
     nodeSep: large ? 10 : 30, edgeSep: large ? 5 : 10,
     rankSep: large ? 40 : 80, padding: 30,
   }).run();
 
-  // Reset spacing sliders
   document.getElementById('x-spacing').value = 1.0;
   document.getElementById('y-spacing').value = 1.0;
   basePositions = {};
   cy.nodes().forEach(n => { const p = n.position(); basePositions[n.id()] = { x: p.x, y: p.y }; });
-
   cy.fit(undefined, 40);
 }
-
-let basePositions = {};
 
 function applySpacing() {
   const sx = parseFloat(document.getElementById('x-spacing').value);
@@ -513,25 +499,33 @@ function applySpacing() {
   });
 }
 
-// ── Show nodes (adds to visible set + re-renders) ──────────────────
-function showNodes(uids) {
-  let changed = false;
-  for (const u of uids) {
-    const s = String(u);
-    if (!visibleUids.has(s)) { visibleUids.add(s); changed = true; }
-  }
-  if (changed) renderVisible();
+// ── Expand via API ─────────────────────────────────────────────────
+async function expandNode(uid, direction) {
+  const resp = await fetch(`/api/expand/${uid}?direction=${direction}`);
+  const data = await resp.json();
+  mergeData(data.nodes, data.edges);
+  relayout();
+  updatePrompt();
 }
 
-function showAllGraph() {
-  if (!graphData) return;
-  visibleUids = new Set(graphData.nodes.map(n => String(n.uid)));
-  renderVisible();
+// ── Show All (fetches full graph — only for small graphs) ──────────
+async function showAllGraph() {
+  if (!taskIndex) return;
+  showLoading('Loading full graph...');
+  const resp = await fetch('/api/graph');
+  const data = await resp.json();
+  knownNodes = {};
+  knownEdges = new Set();
+  cy.elements().remove();
+  mergeData(data.nodes, data.edges);
+  relayout();
+  hideLoading();
   updatePrompt();
 }
 
 function clearGraph() {
-  visibleUids = new Set();
+  knownNodes = {};
+  knownEdges = new Set();
   cy.elements().remove();
   currentCpa = null;
   currentAncestorUids = [];
@@ -542,39 +536,42 @@ function clearGraph() {
 
 function fitGraph() { cy.fit(undefined, 40); }
 
-// ── Graph loading ──────────────────────────────────────────────────
-async function loadGraph() {
-  showLoading('Loading graph...');
-  const resp = await fetch('/api/graph');
-  graphData = await resp.json();
-  buildAdjacency();
-  visibleUids = new Set();
+// ── Task index loading (lightweight) ───────────────────────────────
+async function loadTaskIndex() {
+  showLoading('Loading task index...');
+  const resp = await fetch('/api/tasks');
+  const data = await resp.json();
+  taskIndex = data.tasks;
+  taskCount = taskIndex.length;
+  knownNodes = {};
+  knownEdges = new Set();
   cy.elements().remove();
   hideLoading();
   updatePrompt();
 }
 
 function updatePrompt() {
-  if (!graphData) {
-    document.getElementById('graph-prompt').innerHTML = 'Connect to Neo4j to start.';
+  const el = document.getElementById('graph-prompt');
+  if (!taskIndex) {
+    el.innerHTML = 'Connect to Neo4j to start.';
     return;
   }
-  const count = graphData.nodes.length;
-  if (visibleUids.size > 0) {
-    document.getElementById('graph-prompt').innerHTML = `
-      Showing <strong>${visibleUids.size}</strong> of ${count} tasks.<br><br>
+  const visible = cy.nodes().length;
+  if (visible > 0) {
+    el.innerHTML = `
+      Showing <strong>${visible}</strong> of ${taskCount} tasks.<br><br>
       <strong>Left-click</strong> = select + CPA<br>
       <strong>Right-click</strong> = expand / toggle done`;
     return;
   }
-  if (count <= 200) {
-    document.getElementById('graph-prompt').innerHTML = `
-      <strong>${count} tasks</strong> loaded.<br><br>
+  if (taskCount <= 200) {
+    el.innerHTML = `
+      <strong>${taskCount} tasks</strong> available.<br><br>
       <button class="btn primary" onclick="showAllGraph()">Show entire graph</button><br><br>
       Or search for a task above.`;
   } else {
-    document.getElementById('graph-prompt').innerHTML = `
-      <strong>${count} tasks</strong> loaded.<br><br>
+    el.innerHTML = `
+      <strong>${taskCount} tasks</strong> available.<br><br>
       Graph is too large to show at once.<br>Search for a task above to start exploring.`;
   }
 }
@@ -583,22 +580,25 @@ function updatePrompt() {
 function onSearch() {
   const q = document.getElementById('search-input').value.trim().toLowerCase();
   const resultsEl = document.getElementById('search-results');
-  if (!q || !graphData) { resultsEl.classList.remove('show'); return; }
+  if (!q || !taskIndex) { resultsEl.classList.remove('show'); return; }
 
-  const matches = graphData.nodes.filter(n => n.name.toLowerCase().includes(q)).slice(0, 15);
+  const matches = taskIndex.filter(n => n.name.toLowerCase().includes(q)).slice(0, 15);
   if (matches.length === 0) { resultsEl.classList.remove('show'); return; }
 
   resultsEl.innerHTML = matches.map(n =>
-    `<div class="search-result-item" onclick="pickSearchResult(${n.uid})">${n.name} <span style="color:var(--neo-muted);font-size:10px;">(${n.done ? 'Done' : n.duration + 'h'})</span></div>`
+    `<div class="search-result-item" onclick="pickSearchResult(${n.uid})">${n.name} <span style="color:var(--neo-muted);font-size:10px;">(${n.done ? 'Done' : 'Pending'})</span></div>`
   ).join('');
   resultsEl.classList.add('show');
 }
 
-function pickSearchResult(uid) {
+async function pickSearchResult(uid) {
   document.getElementById('search-results').classList.remove('show');
   document.getElementById('search-input').value = '';
-  showNodes([uid]);
-  selectNode(uid);
+  // Fetch this node from server
+  await expandNode(uid, 'both');
+  // Center on it
+  const n = cy.getElementById(String(uid));
+  if (n.length) cy.animate({ center: { eles: n }, duration: 300 });
 }
 
 // Close search results on click elsewhere
@@ -612,8 +612,7 @@ document.addEventListener('click', (e) => {
 function showCtxMenu(x, y, uid) {
   ctxTargetUid = uid;
   const menu = document.getElementById('ctx-menu');
-  const nm = nodeMap();
-  const node = nm[String(uid)];
+  const node = knownNodes[String(uid)];
   const isDone = node && node.done;
   document.getElementById('ctx-done').textContent = isDone
     ? 'Mark Undone (+ descendants)'
@@ -630,18 +629,16 @@ function hideCtxMenu() {
 
 document.addEventListener('click', hideCtxMenu);
 
-function ctxExpandUpstream() {
+async function ctxExpandUpstream() {
   if (ctxTargetUid == null) return;
-  const upstream = getUpstream(ctxTargetUid);
-  showNodes(upstream);
   hideCtxMenu();
+  await expandNode(ctxTargetUid, 'upstream');
 }
 
-function ctxExpandDownstream() {
+async function ctxExpandDownstream() {
   if (ctxTargetUid == null) return;
-  const downstream = getDownstream(ctxTargetUid);
-  showNodes(downstream);
   hideCtxMenu();
+  await expandNode(ctxTargetUid, 'downstream');
 }
 
 function ctxComputeCPA() {
@@ -652,19 +649,22 @@ function ctxComputeCPA() {
 
 async function ctxToggleDone() {
   if (ctxTargetUid == null) return;
-  const nm = nodeMap();
-  const node = nm[String(ctxTargetUid)];
+  const node = knownNodes[String(ctxTargetUid)];
   const markDone = !(node && node.done);
   const endpoint = markDone ? `/api/complete/${ctxTargetUid}` : `/api/uncomplete/${ctxTargetUid}`;
   await fetch(endpoint, { method: 'POST' });
-  // Refresh data
-  const resp = await fetch('/api/graph');
-  graphData = await resp.json();
-  buildAdjacency();
-  // Update visible nodes
-  const doneSet = new Set(graphData.nodes.filter(n => n.done).map(n => String(n.uid)));
+  // Refresh task index + update visible nodes
+  const resp = await fetch('/api/tasks');
+  const data = await resp.json();
+  taskIndex = data.tasks;
+  const doneMap = {};
+  for (const t of taskIndex) doneMap[String(t.uid)] = t.done;
+  // Update local cache + cytoscape
+  for (const uid in knownNodes) {
+    knownNodes[uid].done = !!doneMap[uid];
+  }
   cy.nodes().forEach(n => {
-    if (doneSet.has(n.id())) n.data('done', true);
+    if (doneMap[n.id()]) n.data('done', true);
     else n.removeData('done');
   });
   hideCtxMenu();
@@ -684,16 +684,15 @@ async function selectNode(uid) {
   clearCpaHighlights();
   const uidStr = String(uid);
 
-  // Ensure node is visible
-  if (!visibleUids.has(uidStr)) {
-    showNodes([uid]);
+  // Ensure node is visible — fetch if needed
+  if (!cy.getElementById(uidStr).length) {
+    await expandNode(uid, 'both');
   }
 
   const node = cy.getElementById(uidStr);
   node.addClass('selected-node');
 
-  const nm = nodeMap();
-  const data = nm[uidStr];
+  const data = knownNodes[uidStr];
   if (!data) return;
   const isDone = !!data.done;
 
@@ -726,10 +725,19 @@ async function selectNode(uid) {
       return;
     }
 
-    // Auto-reveal all CPA-relevant nodes
+    // Auto-reveal all CPA-relevant nodes (fetch details for any we don't have)
     const toReveal = new Set(currentAncestorUids);
     for (const p of currentCpa) for (const u of p.pathUids) toReveal.add(String(u));
-    showNodes(toReveal);
+    const missing = [...toReveal].filter(u => !cy.getElementById(u).length);
+    if (missing.length > 0) {
+      // Fetch missing nodes via expand
+      for (const uid of missing) {
+        const resp = await fetch(`/api/expand/${uid}?direction=both`);
+        const d = await resp.json();
+        mergeData(d.nodes, d.edges);
+      }
+      relayout();
+    }
 
     // Now apply highlighting
     cy.elements().addClass('dimmed');
@@ -834,7 +842,7 @@ async function resetDataset() {
   showLoading('Resetting to 60-task dataset...');
   try {
     await fetch('/api/reset', { method: 'POST' });
-    await loadGraph();
+    await loadTaskIndex();
   } catch (e) { alert('Error: ' + e.message); }
   hideLoading();
 }
@@ -849,8 +857,8 @@ async function resetLargeDataset() {
     const resp = await fetch(`/api/reset-large?layers=${layers}&width=${width}&density=${density}&seed=${seed}&done=0.3`, { method: 'POST' });
     if (!resp.ok) { hideLoading(); alert('Server error: ' + await resp.text()); return; }
     const result = await resp.json();
-    showLoading(`Loading ${result.nodes} nodes, ${result.edges} edges...`);
-    await loadGraph();
+    showLoading(`Generated ${result.nodes} nodes, ${result.edges} edges`);
+    await loadTaskIndex();
     hideLoading();
   } catch (e) { hideLoading(); alert('Error: ' + e.message); }
 }
@@ -885,7 +893,7 @@ async function doConnect() {
     });
     if (!resp.ok) { errEl.textContent = (await resp.json()).detail || 'Connection failed'; return; }
     document.getElementById('connect-overlay').classList.add('hidden');
-    loadGraph();
+    loadTaskIndex();
   } catch (e) { errEl.textContent = e.message; }
 }
 
@@ -897,7 +905,7 @@ document.getElementById('conn-password').addEventListener('keydown', (e) => { if
   const data = await resp.json();
   if (data.connected) {
     document.getElementById('connect-overlay').classList.add('hidden');
-    loadGraph();
+    loadTaskIndex();
   }
 })();
 </script>

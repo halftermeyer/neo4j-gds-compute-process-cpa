@@ -78,9 +78,61 @@ def status():
     return {"connected": False}
 
 
+@app.get("/api/tasks")
+def get_tasks():
+    """Lightweight: return just uid, name, done for search/index."""
+    driver = get_driver()
+    with driver.session() as session:
+        result = session.run("""CYPHER 25
+            MATCH (n:Task)
+            RETURN n.uid AS uid, n.name AS name, n:Done AS done
+        """)
+        return {"tasks": [{"uid": r["uid"], "name": r["name"], "done": r["done"]} for r in result]}
+
+
+@app.get("/api/expand/{uid}")
+def expand_node(uid: int, direction: str = "both"):
+    """Return a node + its neighbors + edges between them. direction: upstream|downstream|both"""
+    driver = get_driver()
+    with driver.session() as session:
+        result = session.run("""CYPHER 25
+            MATCH (center:Task {uid: $uid})
+            OPTIONAL MATCH (center)<-[:PRECEDES]-(upstream:Task)
+            OPTIONAL MATCH (center)-[:PRECEDES]->(downstream:Task)
+            WITH center,
+                 collect(DISTINCT upstream) AS ups,
+                 collect(DISTINCT downstream) AS downs
+            WITH center, ups, downs,
+                 CASE $direction
+                   WHEN 'upstream' THEN [center] + ups
+                   WHEN 'downstream' THEN [center] + downs
+                   ELSE [center] + ups + downs
+                 END AS neighborhood
+            UNWIND neighborhood AS n
+            WITH DISTINCT n, collect(DISTINCT n.uid) AS allUids
+            // Not usable directly — re-collect
+            WITH collect(DISTINCT n) AS nodes
+            WITH nodes, [n IN nodes | n.uid] AS allUids
+            UNWIND nodes AS n
+            OPTIONAL MATCH (n)-[:PRECEDES]->(m:Task)
+            WHERE m.uid IN allUids
+            RETURN DISTINCT
+              n.uid AS uid, n.name AS name, n.duration AS duration, n:Done AS done,
+              collect(DISTINCT m.uid) AS targets
+        """, uid=uid, direction=direction)
+        nodes = []
+        edges = []
+        for r in result:
+            nodes.append({"uid": r["uid"], "name": r["name"], "duration": r["duration"], "done": r["done"]})
+            for t in r["targets"]:
+                if t is not None:
+                    edges.append({"source": r["uid"], "target": t})
+        return {"nodes": nodes, "edges": edges}
+
+
 @app.get("/api/graph")
 def get_graph():
-    """Return all Task nodes and PRECEDES relationships."""
+    """Return all Task nodes and PRECEDES relationships (use for Show All on small graphs)."""
     driver = get_driver()
     with driver.session() as session:
         result = session.run("""CYPHER 25

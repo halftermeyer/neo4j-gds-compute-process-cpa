@@ -152,7 +152,7 @@ def load_to_neo4j(nodes, edges, done_uids, uri, user, password):
 
     with driver.session() as session:
         # Clean
-        session.run("CYPHER 25 MATCH (n) DETACH DELETE n")
+        session.run("CYPHER 25 MATCH (n) CALL (n) {DETACH DELETE n} IN TRANSACTIONS OF 5000 ROWS")
 
         # Create index for fast lookups
         session.run("CREATE INDEX task_uid IF NOT EXISTS FOR (n:Task) ON (n.uid)")
