@@ -864,7 +864,16 @@ async function resetLargeDataset() {
 }
 
 // ── Events ─────────────────────────────────────────────────────────
-cy.on('tap', 'node', (evt) => selectNode(Number(evt.target.data('uid'))));
+cy.on('tap', 'node', (evt) => {
+  // Ctrl+click = context menu (Mac trackpad support)
+  if (evt.originalEvent.ctrlKey || evt.originalEvent.metaKey) {
+    evt.originalEvent.preventDefault();
+    const uid = evt.target.data('uid');
+    showCtxMenu(evt.originalEvent.clientX, evt.originalEvent.clientY, uid);
+  } else {
+    selectNode(Number(evt.target.data('uid')));
+  }
+});
 
 cy.on('cxttap', 'node', (evt) => {
   evt.originalEvent.preventDefault();
