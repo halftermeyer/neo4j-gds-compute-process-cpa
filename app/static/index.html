@@ -551,7 +551,11 @@ async function loadTaskIndex() {
 }
 
 function updatePrompt() {
-  const el = document.getElementById('graph-prompt');
+  let el = document.getElementById('graph-prompt');
+  if (!el) {
+    document.getElementById('node-info').innerHTML = '<div class="info-empty" id="graph-prompt"></div>';
+    el = document.getElementById('graph-prompt');
+  }
   if (!taskIndex) {
     el.innerHTML = 'Connect to Neo4j to start.';
     return;
